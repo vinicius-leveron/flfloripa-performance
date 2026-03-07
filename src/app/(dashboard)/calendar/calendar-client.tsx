@@ -279,8 +279,8 @@ export function CalendarClient() {
   ];
 
   const renderEntryCard = (entry: CalendarEntry, compact = false) => (
-    <Card key={entry.id} className={compact ? 'p-2' : 'flex items-center justify-between p-4'}>
-      <div className={compact ? '' : 'flex items-center gap-3'}>
+    <Card key={entry.id} className={compact ? 'overflow-hidden' : 'flex items-center justify-between overflow-hidden'}>
+      <div className={compact ? 'p-2' : 'flex items-center gap-3 p-4'}>
         <div className={compact ? 'space-y-1' : 'flex items-center gap-2'}>
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${categoryColors[entry.category]}`}>
             {categoryLabels[entry.category]}
@@ -303,7 +303,7 @@ export function CalendarClient() {
           )}
         </div>
       </div>
-      <div className={compact ? 'mt-1 flex items-center gap-1' : 'flex items-center gap-2'}>
+      <div className={compact ? 'mt-1 flex items-center gap-1 px-2 pb-2' : 'flex items-center gap-2 p-4'}>
         <span className="text-xs text-gray-400">{statusLabels[entry.status]}</span>
         {entry.assignee && (
           <span className="text-xs text-gray-500">{entry.assignee.name}</span>
@@ -329,16 +329,16 @@ export function CalendarClient() {
           <p className="text-sm text-gray-500">Planeje e organize suas publicações</p>
         </div>
         <div className="flex gap-2">
-          <div className="flex rounded-md border">
+          <div className="flex overflow-hidden rounded-md border border-gray-200">
             <button
-              className={`px-3 py-1.5 text-sm ${viewMode === 'monthly' ? 'bg-[#1B2A4A] text-white' : 'text-gray-600 hover:bg-gray-50'} rounded-l-md`}
+              className={`px-3 py-1.5 text-sm transition-colors ${viewMode === 'monthly' ? 'bg-[#1B2A4A] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
               onClick={() => setViewMode('monthly')}
             >
               <Calendar size={14} className="inline mr-1" />
               Mensal
             </button>
             <button
-              className={`px-3 py-1.5 text-sm ${viewMode === 'weekly' ? 'bg-[#1B2A4A] text-white' : 'text-gray-600 hover:bg-gray-50'} rounded-r-md`}
+              className={`px-3 py-1.5 text-sm border-l border-gray-200 transition-colors ${viewMode === 'weekly' ? 'bg-[#1B2A4A] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
               onClick={() => setViewMode('weekly')}
             >
               <List size={14} className="inline mr-1" />
@@ -462,7 +462,7 @@ export function CalendarClient() {
         </div>
       ) : viewMode === 'weekly' ? (
         /* Weekly View */
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-7">
           {weekDates.map((date, i) => {
             const dateStr = date.toISOString().split('T')[0];
             const dayEntries = grouped[dateStr] || [];

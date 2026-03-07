@@ -2,14 +2,17 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Select } from '@/shared/components/ui/select';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Badge } from '@/shared/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/components/ui/tabs';
+import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { Plus, Search, Trash2, ArrowRight, ChevronDown, ChevronUp, Clock, User, Mail, Phone, Video } from 'lucide-react';
+import { Plus, Search, Trash2, ArrowRight, ChevronDown, ChevronUp, Clock, User, Mail, Phone, Video, LayoutGrid, List } from 'lucide-react';
 
 interface LeadEvent {
   id: string;
@@ -263,7 +266,85 @@ export function LeadsClient() {
           </Card>
         )}
 
-        {/* Leads List */}
+        {/* Leads Views */}
+        <Tabs defaultValue="list">
+          <TabsList>
+            <TabsTrigger value="list"><List size={14} className="mr-1" /> Lista</TabsTrigger>
+            <TabsTrigger value="pipeline"><LayoutGrid size={14} className="mr-1" /> Pipeline</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pipeline">
+            {isLoading ? (
+              <Skeleton className="h-96 w-full" />
+            ) : leads.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <User className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+                  <p className="text-gray-500">Nenhum lead para exibir no pipeline</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-4">
+                {stages.map((stage) => {
+                  const stageLeads = leads.filter(l => l.currentStage.id === stage.id);
+                  const nextStageObj = stages.find(s => s.position === stage.position + 1);
+                  return (
+                    <div key={stage.id} className="flex-shrink-0 w-64">
+                      <div className="mb-2 flex items-center justify-between rounded-lg bg-[#1B2A4A] px-3 py-2">
+                        <span className="text-sm font-medium text-white">{stage.name}</span>
+                        <Badge className="bg-white/20 text-white border-transparent text-[10px]">{stageLeads.length}</Badge>
+                      </div>
+                      <ScrollArea className="h-[500px]">
+                        <div className="space-y-2 pr-2">
+                          {stageLeads.map((lead) => (
+                            <Card key={lead.id} className="transition-shadow hover:shadow-md">
+                              <CardContent className="p-3">
+                                <Link href={`/leads/${lead.id}`} className="block">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <LeadAvatar name={lead.name} />
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-medium truncate hover:text-[#E8792A] transition-colors">{lead.name}</p>
+                                      {lead.channelOrigin && (
+                                        <p className="text-[10px] text-gray-400">via {lead.channelOrigin}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </Link>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {lead.lifeMoment && (
+                                    <Badge variant="info" className="text-[8px] px-1 py-0">{lifeMomentLabels[lead.lifeMoment] || lead.lifeMoment}</Badge>
+                                  )}
+                                  {lead.vslWatched && (
+                                    <Badge variant="warning" className="text-[8px] px-1 py-0">VSL</Badge>
+                                  )}
+                                </div>
+                                {nextStageObj && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="mt-2 w-full text-xs h-7"
+                                    onClick={() => moveMutation.mutate({ id: lead.id, toStageId: nextStageObj.id })}
+                                    disabled={moveMutation.isPending}
+                                  >
+                                    <ArrowRight size={12} className="mr-1" /> {nextStageObj.name}
+                                  </Button>
+                                )}
+                              </CardContent>
+                            </Card>
+                          ))}
+                          {stageLeads.length === 0 && (
+                            <p className="py-8 text-center text-xs text-gray-400">Vazio</p>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="list">
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
@@ -293,7 +374,7 @@ export function LeadsClient() {
                       <LeadAvatar name={lead.name} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-medium truncate">{lead.name}</p>
+                          <Link href={`/leads/${lead.id}`} className="font-medium truncate hover:text-[#E8792A] transition-colors">{lead.name}</Link>
                           <button
                             onClick={() => setExpandedLead(isExpanded ? null : lead.id)}
                             className="rounded p-0.5 text-gray-400 hover:bg-gray-100"
@@ -457,6 +538,8 @@ export function LeadsClient() {
             )}
           </div>
         )}
+          </TabsContent>
+        </Tabs>
       </div>
     </TooltipProvider>
   );

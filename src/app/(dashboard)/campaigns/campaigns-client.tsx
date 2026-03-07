@@ -93,7 +93,9 @@ export function CampaignsClient() {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg">{campaign.name}</CardTitle>
+                        <Link href={`/campaigns/${campaign.id}`}>
+                          <CardTitle className="text-lg hover:text-[#E8792A] transition-colors cursor-pointer">{campaign.name}</CardTitle>
+                        </Link>
                         <Badge variant={statusVariant[campaign.status] || 'secondary'}>
                           {statusLabels[campaign.status] || campaign.status}
                         </Badge>

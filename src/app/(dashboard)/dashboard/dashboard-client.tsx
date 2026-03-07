@@ -8,7 +8,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Select } from '@/shared/components/ui/select';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { Eye, TrendingUp, Users, BarChart3, ArrowUp, ArrowDown, Minus, Plus, CalendarPlus, FileText, HelpCircle } from 'lucide-react';
+import { Eye, TrendingUp, Users, BarChart3, ArrowUp, ArrowDown, Minus, Plus, FileText, HelpCircle } from 'lucide-react';
 import { TrendChart } from './trend-chart';
 import { ChannelComparison } from './channel-comparison';
 
@@ -108,26 +108,21 @@ export function DashboardClient() {
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        {/* Header with Quick Actions */}
-        <div className="flex items-center justify-between">
+        {/* Header */}
+        <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-[#1B2A4A]/5 via-transparent to-[#E8792A]/5 px-4 py-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+            <h1 className="text-2xl font-bold text-[#1B2A4A]">Dashboard</h1>
             <p className="text-sm text-gray-500">Visão geral das métricas de todos os canais</p>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/leads">
               <Button variant="outline" size="sm">
-                <Plus size={14} className="mr-1" /> Registrar Lead
-              </Button>
-            </Link>
-            <Link href="/calendar">
-              <Button variant="outline" size="sm">
-                <CalendarPlus size={14} className="mr-1" /> Criar Conteúdo
+                <Plus size={14} className="mr-1" /> Novo Lead
               </Button>
             </Link>
             <Link href="/reports">
               <Button variant="outline" size="sm">
-                <FileText size={14} className="mr-1" /> Gerar Relatório
+                <FileText size={14} className="mr-1" /> Relatório
               </Button>
             </Link>
             <Select

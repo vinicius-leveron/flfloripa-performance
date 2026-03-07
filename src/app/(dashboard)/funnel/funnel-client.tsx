@@ -265,7 +265,7 @@ export function FunnelClient() {
                   <CardHeader>
                     <CardTitle className="text-lg">Funil de Ingresso Logosófico</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="overflow-hidden">
                     <FunnelTrapezoid stages={stages} maxLeads={maxLeads} />
                   </CardContent>
                 </Card>
