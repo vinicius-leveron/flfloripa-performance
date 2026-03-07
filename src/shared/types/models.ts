@@ -55,11 +55,24 @@ export interface Lead {
   name: string;
   email: string | null;
   phone: string | null;
-  channelOrigin: string;
+  channelOrigin: string | null;
   currentStageId: string;
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
+  // Perfil / Avatar
+  lifeMoment: string | null;
+  inquiry: string | null;
+  source: string | null;
+  // Tracking de origem
+  campaignId: string | null;
+  adSpend: number | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  // VSL tracking
+  vslWatched: boolean;
+  vslWatchTime: number | null;
 }
 
 export interface ContentCalendarEntry {

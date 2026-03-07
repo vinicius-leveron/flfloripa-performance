@@ -11,6 +11,19 @@ const createLeadSchema = z.object({
   channelOrigin: z.string().optional(),
   currentStageId: z.string(),
   notes: z.string().optional(),
+  // Perfil / Avatar
+  lifeMoment: z.string().optional(),
+  inquiry: z.string().optional(),
+  source: z.string().optional(),
+  // Tracking de origem
+  campaignId: z.string().optional(),
+  adSpend: z.number().optional(),
+  utmSource: z.string().optional(),
+  utmMedium: z.string().optional(),
+  utmCampaign: z.string().optional(),
+  // VSL
+  vslWatched: z.boolean().optional(),
+  vslWatchTime: z.number().int().optional(),
 });
 
 export async function GET(request: Request) {
@@ -23,11 +36,15 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const stageId = url.searchParams.get('stageId');
     const search = url.searchParams.get('search');
+    const channelOrigin = url.searchParams.get('channelOrigin');
+    const lifeMoment = url.searchParams.get('lifeMoment');
     const page = parseInt(url.searchParams.get('page') || '1', 10);
     const limit = parseInt(url.searchParams.get('limit') || '20', 10);
 
     const where: Record<string, unknown> = { isDeleted: false };
     if (stageId) where.currentStageId = stageId;
+    if (channelOrigin) where.channelOrigin = channelOrigin;
+    if (lifeMoment) where.lifeMoment = lifeMoment;
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -42,6 +59,15 @@ export async function GET(request: Request) {
         include: {
           currentStage: { select: { id: true, name: true, position: true } },
           registeredBy: { select: { id: true, name: true } },
+          events: {
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+            include: {
+              fromStage: { select: { name: true } },
+              toStage: { select: { name: true } },
+              createdBy: { select: { name: true } },
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
@@ -78,6 +104,16 @@ export async function POST(request: Request) {
         currentStageId: data.currentStageId,
         registeredById: session.user.id,
         notes: data.notes || null,
+        lifeMoment: data.lifeMoment || null,
+        inquiry: data.inquiry || null,
+        source: data.source || null,
+        campaignId: data.campaignId || null,
+        adSpend: data.adSpend ?? null,
+        utmSource: data.utmSource || null,
+        utmMedium: data.utmMedium || null,
+        utmCampaign: data.utmCampaign || null,
+        vslWatched: data.vslWatched ?? false,
+        vslWatchTime: data.vslWatchTime ?? null,
       },
       include: {
         currentStage: { select: { id: true, name: true, position: true } },

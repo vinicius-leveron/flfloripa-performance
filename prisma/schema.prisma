@@ -248,6 +248,22 @@ model Lead {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
+  // Perfil / Avatar do lead
+  lifeMoment   String?  @map("life_moment")
+  inquiry      String?
+  source       String?
+
+  // Tracking de origem
+  campaignId   String?  @map("campaign_id")
+  adSpend      Float?   @map("ad_spend")
+  utmSource    String?  @map("utm_source")
+  utmMedium    String?  @map("utm_medium")
+  utmCampaign  String?  @map("utm_campaign")
+
+  // VSL tracking
+  vslWatched   Boolean  @default(false) @map("vsl_watched")
+  vslWatchTime Int?     @map("vsl_watch_time")
+
   currentStage FunnelStage @relation(fields: [currentStageId], references: [id])
   registeredBy User        @relation("registeredBy", fields: [registeredById], references: [id])
   events       LeadEvent[]

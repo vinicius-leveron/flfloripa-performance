@@ -7,7 +7,16 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Select } from '@/shared/components/ui/select';
 import { Skeleton } from '@/shared/components/ui/skeleton';
-import { Plus, Search, Trash2, ArrowRight } from 'lucide-react';
+import { Plus, Search, Trash2, ArrowRight, ChevronDown, ChevronUp, Clock } from 'lucide-react';
+
+interface LeadEvent {
+  id: string;
+  createdAt: string;
+  notes: string | null;
+  fromStage: { name: string };
+  toStage: { name: string };
+  createdBy: { name: string };
+}
 
 interface Lead {
   id: string;
@@ -16,9 +25,19 @@ interface Lead {
   phone: string | null;
   channelOrigin: string | null;
   notes: string | null;
+  lifeMoment: string | null;
+  inquiry: string | null;
+  source: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  adSpend: number | null;
+  vslWatched: boolean;
+  vslWatchTime: number | null;
   createdAt: string;
   currentStage: { id: string; name: string; position: number };
   registeredBy: { id: string; name: string };
+  events: LeadEvent[];
 }
 
 interface FunnelStage {
@@ -27,11 +46,23 @@ interface FunnelStage {
   position: number;
 }
 
+const lifeMomentOptions = [
+  { label: 'Selecionar momento...', value: '' },
+  { label: 'Transição de carreira', value: 'transicao_carreira' },
+  { label: 'Paternidade/Maternidade', value: 'paternidade' },
+  { label: 'Busca espiritual', value: 'busca_espiritual' },
+  { label: 'Crise pessoal', value: 'crise_pessoal' },
+  { label: 'Autoconhecimento', value: 'autoconhecimento' },
+  { label: 'Relacionamento', value: 'relacionamento' },
+  { label: 'Outro', value: 'outro' },
+];
+
 export function LeadsClient() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [expandedLead, setExpandedLead] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -39,6 +70,12 @@ export function LeadsClient() {
     channelOrigin: '',
     currentStageId: '',
     notes: '',
+    lifeMoment: '',
+    inquiry: '',
+    source: '',
+    utmSource: '',
+    utmMedium: '',
+    utmCampaign: '',
   });
 
   const { data: stagesData } = useQuery<{ data: FunnelStage[] }>({
@@ -71,7 +108,7 @@ export function LeadsClient() {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['funnel-stages'] });
       setShowForm(false);
-      setFormData({ name: '', email: '', phone: '', channelOrigin: '', currentStageId: '', notes: '' });
+      setFormData({ name: '', email: '', phone: '', channelOrigin: '', currentStageId: '', notes: '', lifeMoment: '', inquiry: '', source: '', utmSource: '', utmMedium: '', utmCampaign: '' });
     },
   });
 
@@ -110,7 +147,7 @@ export function LeadsClient() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
-          <p className="text-sm text-gray-500">Gerencie contatos no funil de conversão</p>
+          <p className="text-sm text-gray-500">Gerencie contatos no funil de ingresso</p>
         </div>
         <Button onClick={() => setShowForm(!showForm)}>
           <Plus size={16} className="mr-1" /> Novo Lead
@@ -142,27 +179,60 @@ export function LeadsClient() {
           <CardHeader><CardTitle className="text-lg">Novo Lead</CardTitle></CardHeader>
           <CardContent>
             <form
-              className="grid gap-4 md:grid-cols-2"
+              className="space-y-4"
               onSubmit={(e) => {
                 e.preventDefault();
-                const data = { ...formData };
-                if (!data.currentStageId && stages.length > 0) {
-                  data.currentStageId = stages[stages.length > 3 ? 3 : stages.length - 1].id;
+                const submitData = { ...formData };
+                if (!submitData.currentStageId && stages.length > 0) {
+                  submitData.currentStageId = stages[0].id;
                 }
-                createMutation.mutate(data);
+                createMutation.mutate(submitData);
               }}
             >
-              <Input placeholder="Nome *" value={formData.name} onChange={(e) => setFormData(d => ({ ...d, name: e.target.value }))} required />
-              <Input placeholder="Email" type="email" value={formData.email} onChange={(e) => setFormData(d => ({ ...d, email: e.target.value }))} />
-              <Input placeholder="Telefone" value={formData.phone} onChange={(e) => setFormData(d => ({ ...d, phone: e.target.value }))} />
-              <Input placeholder="Origem (ex: Instagram)" value={formData.channelOrigin} onChange={(e) => setFormData(d => ({ ...d, channelOrigin: e.target.value }))} />
-              <Select
-                options={stages.map(s => ({ label: s.name, value: s.id }))}
-                value={formData.currentStageId}
-                onChange={(e) => setFormData(d => ({ ...d, currentStageId: e.target.value }))}
-              />
+              {/* Dados básicos */}
+              <div>
+                <p className="mb-2 text-xs font-medium text-gray-500 uppercase">Dados do contato</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Input placeholder="Nome *" value={formData.name} onChange={(e) => setFormData(d => ({ ...d, name: e.target.value }))} required />
+                  <Input placeholder="Email" type="email" value={formData.email} onChange={(e) => setFormData(d => ({ ...d, email: e.target.value }))} />
+                  <Input placeholder="Telefone" value={formData.phone} onChange={(e) => setFormData(d => ({ ...d, phone: e.target.value }))} />
+                  <Input placeholder="Origem (ex: Instagram)" value={formData.channelOrigin} onChange={(e) => setFormData(d => ({ ...d, channelOrigin: e.target.value }))} />
+                </div>
+              </div>
+
+              {/* Perfil / Avatar */}
+              <div>
+                <p className="mb-2 text-xs font-medium text-gray-500 uppercase">Perfil / Avatar</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Select
+                    options={lifeMomentOptions}
+                    value={formData.lifeMoment}
+                    onChange={(e) => setFormData(d => ({ ...d, lifeMoment: e.target.value }))}
+                  />
+                  <Input placeholder="Inquietude principal" value={formData.inquiry} onChange={(e) => setFormData(d => ({ ...d, inquiry: e.target.value }))} />
+                  <Input placeholder="Fonte/Criativo" value={formData.source} onChange={(e) => setFormData(d => ({ ...d, source: e.target.value }))} />
+                  <Select
+                    options={stages.map(s => ({ label: s.name, value: s.id }))}
+                    value={formData.currentStageId}
+                    onChange={(e) => setFormData(d => ({ ...d, currentStageId: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {/* UTMs */}
+              <div>
+                <p className="mb-2 text-xs font-medium text-gray-500 uppercase">Tracking (UTMs)</p>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <Input placeholder="utm_source" value={formData.utmSource} onChange={(e) => setFormData(d => ({ ...d, utmSource: e.target.value }))} />
+                  <Input placeholder="utm_medium" value={formData.utmMedium} onChange={(e) => setFormData(d => ({ ...d, utmMedium: e.target.value }))} />
+                  <Input placeholder="utm_campaign" value={formData.utmCampaign} onChange={(e) => setFormData(d => ({ ...d, utmCampaign: e.target.value }))} />
+                </div>
+              </div>
+
+              {/* Notes */}
               <Input placeholder="Notas" value={formData.notes} onChange={(e) => setFormData(d => ({ ...d, notes: e.target.value }))} />
-              <div className="md:col-span-2 flex gap-2">
+
+              <div className="flex gap-2">
                 <Button type="submit" disabled={createMutation.isPending}>Salvar</Button>
                 <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
               </div>
@@ -190,41 +260,142 @@ export function LeadsClient() {
           {leads.map((lead) => {
             const currentIdx = stages.findIndex(s => s.id === lead.currentStage.id);
             const nextStage = currentIdx >= 0 && currentIdx < stages.length - 1 ? stages[currentIdx + 1] : null;
+            const isExpanded = expandedLead === lead.id;
 
             return (
-              <Card key={lead.id} className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="font-medium">{lead.name}</p>
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
-                      {lead.email && <span>{lead.email}</span>}
-                      {lead.phone && <span>{lead.phone}</span>}
-                      {lead.channelOrigin && <span>via {lead.channelOrigin}</span>}
+              <Card key={lead.id} className="overflow-hidden">
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{lead.name}</p>
+                        <button
+                          onClick={() => setExpandedLead(isExpanded ? null : lead.id)}
+                          className="rounded p-0.5 text-gray-400 hover:bg-gray-100"
+                        >
+                          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                        {lead.email && <span>{lead.email}</span>}
+                        {lead.phone && <span>{lead.phone}</span>}
+                        {lead.channelOrigin && <span>via {lead.channelOrigin}</span>}
+                        {lead.lifeMoment && (
+                          <span className="rounded bg-purple-50 px-1.5 py-0.5 text-purple-600">
+                            {lead.lifeMoment}
+                          </span>
+                        )}
+                        {lead.vslWatched && (
+                          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-blue-600">
+                            VSL assistiu
+                          </span>
+                        )}
+                      </div>
+                      <span className="inline-block rounded-full bg-[#FDF2E9] px-2 py-0.5 text-xs text-[#E8792A] font-medium">
+                        {lead.currentStage.name}
+                      </span>
                     </div>
-                    <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                      {lead.currentStage.name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {nextStage && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => moveMutation.mutate({ id: lead.id, toStageId: nextStage.id })}
-                        disabled={moveMutation.isPending}
+                    <div className="flex items-center gap-2">
+                      {nextStage && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => moveMutation.mutate({ id: lead.id, toStageId: nextStage.id })}
+                          disabled={moveMutation.isPending}
+                        >
+                          <ArrowRight size={14} className="mr-1" />
+                          {nextStage.name}
+                        </Button>
+                      )}
+                      {/* Stage selector for jumping to any stage */}
+                      <Select
+                        options={stages.filter(s => s.id !== lead.currentStage.id).map(s => ({ label: `→ ${s.name}`, value: s.id }))}
+                        value=""
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            moveMutation.mutate({ id: lead.id, toStageId: e.target.value });
+                          }
+                        }}
+                        className="w-36 text-xs"
+                      />
+                      <button
+                        onClick={() => deleteMutation.mutate(lead.id)}
+                        className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-500"
                       >
-                        <ArrowRight size={14} className="mr-1" />
-                        {nextStage.name}
-                      </Button>
-                    )}
-                    <button
-                      onClick={() => deleteMutation.mutate(lead.id)}
-                      className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-500"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
+
+                {/* Expanded Details */}
+                {isExpanded && (
+                  <div className="border-t bg-gray-50 px-4 py-3 space-y-3">
+                    {/* Profile info */}
+                    <div className="grid gap-2 md:grid-cols-3 text-xs">
+                      {lead.inquiry && (
+                        <div>
+                          <span className="text-gray-400">Inquietude:</span>{' '}
+                          <span className="text-gray-700">{lead.inquiry}</span>
+                        </div>
+                      )}
+                      {lead.source && (
+                        <div>
+                          <span className="text-gray-400">Fonte/Criativo:</span>{' '}
+                          <span className="text-gray-700">{lead.source}</span>
+                        </div>
+                      )}
+                      {lead.adSpend !== null && lead.adSpend > 0 && (
+                        <div>
+                          <span className="text-gray-400">Ad Spend:</span>{' '}
+                          <span className="text-gray-700">R$ {lead.adSpend.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {lead.utmSource && (
+                        <div>
+                          <span className="text-gray-400">UTM:</span>{' '}
+                          <span className="text-gray-700">{lead.utmSource}/{lead.utmMedium}/{lead.utmCampaign}</span>
+                        </div>
+                      )}
+                      {lead.vslWatchTime !== null && (
+                        <div>
+                          <span className="text-gray-400">Tempo VSL:</span>{' '}
+                          <span className="text-gray-700">{Math.floor(lead.vslWatchTime / 60)}min {lead.vslWatchTime % 60}s</span>
+                        </div>
+                      )}
+                      {lead.notes && (
+                        <div className="md:col-span-3">
+                          <span className="text-gray-400">Notas:</span>{' '}
+                          <span className="text-gray-700">{lead.notes}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Timeline */}
+                    {lead.events && lead.events.length > 0 && (
+                      <div>
+                        <p className="mb-2 text-xs font-medium text-gray-500 flex items-center gap-1">
+                          <Clock size={12} /> Histórico de movimentações
+                        </p>
+                        <div className="space-y-1">
+                          {lead.events.map((event) => (
+                            <div key={event.id} className="flex items-center gap-2 text-xs text-gray-600">
+                              <div className="h-1.5 w-1.5 rounded-full bg-[#E8792A]" />
+                              <span className="text-gray-400">
+                                {new Date(event.createdAt).toLocaleDateString('pt-BR')}
+                              </span>
+                              <span>
+                                {event.fromStage.name} → {event.toStage.name}
+                              </span>
+                              <span className="text-gray-400">por {event.createdBy.name}</span>
+                              {event.notes && <span className="italic text-gray-400">({event.notes})</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </Card>
             );
           })}

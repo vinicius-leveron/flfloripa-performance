@@ -3,13 +3,15 @@ import { PrismaClient } from '../src/generated/prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
+  // 7 estágios do funil de ingresso logosófico
   const stages = [
-    { name: 'Alcance', position: 1, description: 'Impressões e views nas redes sociais', source: 'AUTO' as const },
-    { name: 'Engajamento', position: 2, description: 'Likes, comentários, shares, saves', source: 'AUTO' as const },
-    { name: 'Interesse', position: 3, description: 'Cliques em links, visitas ao perfil, DMs', source: 'AUTO' as const },
-    { name: 'Consideração', position: 4, description: 'Cadastro em webinar ou conteúdo especial', source: 'MANUAL' as const },
-    { name: 'Conversão', position: 5, description: 'Comparecimento à reunião presencial', source: 'MANUAL' as const },
-    { name: 'Retenção', position: 6, description: 'Retorno e fidelização como membro', source: 'MANUAL' as const },
+    { name: 'Impactado', position: 1, description: 'Viu o criativo/anúncio nas redes sociais', source: 'AUTO' as const },
+    { name: 'Visitou VSL', position: 2, description: 'Clicou e assistiu a VSL na landing page', source: 'AUTO' as const },
+    { name: 'Inscrito Atividade', position: 3, description: 'Preencheu formulário para atividade online', source: 'MANUAL' as const },
+    { name: 'Participou Online', position: 4, description: 'Compareceu à atividade online ao vivo', source: 'MANUAL' as const },
+    { name: 'Participou Presencial', position: 5, description: 'Veio à atividade presencial na sede', source: 'MANUAL' as const },
+    { name: 'Pedido de Curso', position: 6, description: 'Solicitou ingresso no curso de formação', source: 'MANUAL' as const },
+    { name: 'Ingressou', position: 7, description: 'Efetivou ingresso na Fundação Logosófica', source: 'MANUAL' as const },
   ];
 
   for (const stage of stages) {
@@ -20,7 +22,7 @@ async function main() {
     });
   }
 
-  console.log('Seed complete: 6 funnel stages created');
+  console.log('Seed complete: 7 funnel stages (funil de ingresso) created');
 }
 
 main()

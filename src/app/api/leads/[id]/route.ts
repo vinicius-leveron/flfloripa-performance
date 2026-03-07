@@ -9,6 +9,19 @@ const updateLeadSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   phone: z.string().optional(),
   notes: z.string().optional(),
+  // Perfil / Avatar
+  lifeMoment: z.string().optional(),
+  inquiry: z.string().optional(),
+  source: z.string().optional(),
+  // Tracking
+  campaignId: z.string().optional(),
+  adSpend: z.number().optional(),
+  utmSource: z.string().optional(),
+  utmMedium: z.string().optional(),
+  utmCampaign: z.string().optional(),
+  // VSL
+  vslWatched: z.boolean().optional(),
+  vslWatchTime: z.number().int().optional(),
 });
 
 export async function PUT(
@@ -32,7 +45,7 @@ export async function PUT(
       where: { id },
       data: {
         ...data,
-        email: data.email || null,
+        email: data.email !== undefined ? (data.email || null) : undefined,
       },
       include: {
         currentStage: { select: { id: true, name: true, position: true } },

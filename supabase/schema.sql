@@ -161,7 +161,20 @@ CREATE TABLE leads (
   notes TEXT,
   is_deleted BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- Perfil / Avatar
+  life_moment TEXT,
+  inquiry TEXT,
+  source TEXT,
+  -- Tracking de origem
+  campaign_id TEXT,
+  ad_spend DOUBLE PRECISION,
+  utm_source TEXT,
+  utm_medium TEXT,
+  utm_campaign TEXT,
+  -- VSL tracking
+  vsl_watched BOOLEAN NOT NULL DEFAULT false,
+  vsl_watch_time INTEGER
 );
 CREATE INDEX idx_leads_current_stage ON leads(current_stage_id);
 CREATE INDEX idx_leads_is_deleted ON leads(is_deleted);
