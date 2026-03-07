@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { IS_DEMO } from '@/lib/demo-data';
 import { handleApiError } from '@/lib/api-error';
 
 export async function PATCH(
@@ -15,11 +15,12 @@ export async function PATCH(
 
     const { id } = await params;
 
-    const alert = await prisma.alert.update({
-      where: { id },
-      data: { isRead: true },
-    });
+    if (IS_DEMO) {
+      return NextResponse.json({ data: { id, isRead: true } });
+    }
 
+    const { prisma } = await import('@/lib/prisma');
+    const alert = await prisma.alert.update({ where: { id }, data: { isRead: true } });
     return NextResponse.json({ data: alert });
   } catch (error) {
     return handleApiError(error);

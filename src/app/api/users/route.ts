@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { IS_DEMO, DEMO_USERS } from '@/lib/demo-data';
 import { handleApiError } from '@/lib/api-error';
 
 export async function GET() {
@@ -10,14 +10,13 @@ export async function GET() {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Não autenticado' } }, { status: 401 });
     }
 
+    if (IS_DEMO) {
+      return NextResponse.json({ data: DEMO_USERS });
+    }
+
+    const { prisma } = await import('@/lib/prisma');
     const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        role: true,
-      },
+      select: { id: true, name: true, email: true, image: true, role: true },
       orderBy: { name: 'asc' },
     });
 

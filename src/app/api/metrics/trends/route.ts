@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { IS_DEMO, DEMO_DASHBOARD } from '@/lib/demo-data';
 import { handleApiError } from '@/lib/api-error';
 
 export async function GET(request: Request) {
@@ -10,6 +10,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Não autenticado' } }, { status: 401 });
     }
 
+    if (IS_DEMO) {
+      return NextResponse.json({ data: DEMO_DASHBOARD.chartData.byDay });
+    }
+
+    const { prisma } = await import('@/lib/prisma');
     const url = new URL(request.url);
     const channelId = url.searchParams.get('channelId');
     const days = parseInt(url.searchParams.get('days') || '30', 10);
@@ -18,15 +23,10 @@ export async function GET(request: Request) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const channelFilter = channelId
-      ? { channelId }
-      : { channel: { userId: session.user.id } };
+    const channelFilter = channelId ? { channelId } : { channel: { userId: session.user.id } };
 
     const metrics = await prisma.metric.findMany({
-      where: {
-        ...channelFilter,
-        date: { gte: startDate, lte: endDate },
-      },
+      where: { ...channelFilter, date: { gte: startDate, lte: endDate } },
       orderBy: { date: 'asc' },
     });
 
@@ -41,9 +41,7 @@ export async function GET(request: Request) {
       dailyData.set(key, existing);
     }
 
-    return NextResponse.json({
-      data: Array.from(dailyData.values()),
-    });
+    return NextResponse.json({ data: Array.from(dailyData.values()) });
   } catch (error) {
     return handleApiError(error);
   }

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { IS_DEMO, DEMO_STAGES } from '@/lib/demo-data';
 import { handleApiError, AppError } from '@/lib/api-error';
 
 const moveSchema = z.object({
@@ -23,25 +23,23 @@ export async function POST(
     const body = await request.json();
     const data = moveSchema.parse(body);
 
+    if (IS_DEMO) {
+      const stage = DEMO_STAGES.find(s => s.id === data.toStageId) || DEMO_STAGES[0];
+      return NextResponse.json({ data: { id, currentStage: { id: stage.id, name: stage.name, position: stage.position } } });
+    }
+
+    const { prisma } = await import('@/lib/prisma');
+
     const lead = await prisma.lead.findFirst({ where: { id, isDeleted: false } });
     if (!lead) throw new AppError('NOT_FOUND', 'Lead não encontrado', 404);
 
     const [updatedLead] = await prisma.$transaction([
       prisma.lead.update({
-        where: { id },
-        data: { currentStageId: data.toStageId },
-        include: {
-          currentStage: { select: { id: true, name: true, position: true } },
-        },
+        where: { id }, data: { currentStageId: data.toStageId },
+        include: { currentStage: { select: { id: true, name: true, position: true } } },
       }),
       prisma.leadEvent.create({
-        data: {
-          leadId: id,
-          fromStageId: lead.currentStageId,
-          toStageId: data.toStageId,
-          notes: data.notes || null,
-          createdById: session.user.id,
-        },
+        data: { leadId: id, fromStageId: lead.currentStageId, toStageId: data.toStageId, notes: data.notes || null, createdById: session.user.id },
       }),
     ]);
 

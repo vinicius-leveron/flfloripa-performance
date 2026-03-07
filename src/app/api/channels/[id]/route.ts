@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { IS_DEMO } from '@/lib/demo-data';
 import { handleApiError, AppError } from '@/lib/api-error';
 
 export async function DELETE(
@@ -13,20 +13,15 @@ export async function DELETE(
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Não autenticado' } }, { status: 401 });
     }
 
-    const { id } = await params;
-
-    const channel = await prisma.channel.findFirst({
-      where: { id, userId: session.user.id },
-    });
-
-    if (!channel) {
-      throw new AppError('NOT_FOUND', 'Canal não encontrado', 404);
+    if (IS_DEMO) {
+      return NextResponse.json({ data: { message: 'Canal desconectado' } });
     }
 
-    await prisma.channel.update({
-      where: { id },
-      data: { status: 'DISCONNECTED', accessToken: '', refreshToken: null },
-    });
+    const { prisma } = await import('@/lib/prisma');
+    const { id } = await params;
+    const channel = await prisma.channel.findFirst({ where: { id, userId: session.user.id } });
+    if (!channel) throw new AppError('NOT_FOUND', 'Canal não encontrado', 404);
+    await prisma.channel.update({ where: { id }, data: { status: 'DISCONNECTED', accessToken: '', refreshToken: null } });
 
     return NextResponse.json({ data: { message: 'Canal desconectado' } });
   } catch (error) {

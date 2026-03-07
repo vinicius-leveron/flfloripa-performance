@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { IS_DEMO, DEMO_STAGES, DEMO_FUNNEL_METRICS } from '@/lib/demo-data';
 import { handleApiError } from '@/lib/api-error';
 
 export async function GET() {
@@ -10,29 +10,22 @@ export async function GET() {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Não autenticado' } }, { status: 401 });
     }
 
+    if (IS_DEMO) {
+      return NextResponse.json({ data: DEMO_STAGES, metrics: DEMO_FUNNEL_METRICS.metrics });
+    }
+
+    const { prisma } = await import('@/lib/prisma');
+
     const stages = await prisma.funnelStage.findMany({
       orderBy: { position: 'asc' },
-      include: {
-        _count: {
-          select: { leads: { where: { isDeleted: false } } },
-        },
-      },
+      include: { _count: { select: { leads: { where: { isDeleted: false } } } } },
     });
 
-    // Ad spend totals
-    const adSpendResult = await prisma.lead.aggregate({
-      where: { isDeleted: false },
-      _sum: { adSpend: true },
-    });
+    const adSpendResult = await prisma.lead.aggregate({ where: { isDeleted: false }, _sum: { adSpend: true } });
     const totalAdSpend = adSpendResult._sum.adSpend || 0;
 
-    // Calculate conversion rates between adjacent stages
     const stagesWithRates = stages.map((stage, index) => ({
-      id: stage.id,
-      name: stage.name,
-      position: stage.position,
-      description: stage.description,
-      source: stage.source,
+      id: stage.id, name: stage.name, position: stage.position, description: stage.description, source: stage.source,
       leadCount: stage._count.leads,
       conversionRate: index > 0 && stages[index - 1]._count.leads > 0
         ? Math.round((stage._count.leads / stages[index - 1]._count.leads) * 10000) / 100
@@ -44,20 +37,11 @@ export async function GET() {
     const totalIngressos = ingressoStage?._count.leads || 0;
     const impactadoStage = stages.find(s => s.position === 1);
     const overallConversionRate = impactadoStage && impactadoStage._count.leads > 0
-      ? Math.round((totalIngressos / impactadoStage._count.leads) * 10000) / 100
-      : 0;
+      ? Math.round((totalIngressos / impactadoStage._count.leads) * 10000) / 100 : 0;
 
     return NextResponse.json({
       data: stagesWithRates,
-      metrics: {
-        totalLeads,
-        totalIngressos,
-        overallConversionRate,
-        totalAdSpend: Math.round(totalAdSpend * 100) / 100,
-        costPerIngresso: totalIngressos > 0
-          ? Math.round((totalAdSpend / totalIngressos) * 100) / 100
-          : 0,
-      },
+      metrics: { totalLeads, totalIngressos, overallConversionRate, totalAdSpend: Math.round(totalAdSpend * 100) / 100, costPerIngresso: totalIngressos > 0 ? Math.round((totalAdSpend / totalIngressos) * 100) / 100 : 0 },
     });
   } catch (error) {
     return handleApiError(error);

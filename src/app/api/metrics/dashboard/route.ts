@@ -1,28 +1,23 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { IS_DEMO, DEMO_DASHBOARD } from '@/lib/demo-data';
 import { handleApiError } from '@/lib/api-error';
 
 function getDateRange(period: string): { start: Date; end: Date; prevStart: Date; prevEnd: Date } {
   const end = new Date();
   end.setHours(23, 59, 59, 999);
-
   let days = 7;
   if (period === '30d') days = 30;
   else if (period === '90d') days = 90;
-
   const start = new Date(end);
   start.setDate(start.getDate() - days);
   start.setHours(0, 0, 0, 0);
-
   const prevEnd = new Date(start);
   prevEnd.setDate(prevEnd.getDate() - 1);
   prevEnd.setHours(23, 59, 59, 999);
-
   const prevStart = new Date(prevEnd);
   prevStart.setDate(prevStart.getDate() - days);
   prevStart.setHours(0, 0, 0, 0);
-
   return { start, end, prevStart, prevEnd };
 }
 
@@ -41,10 +36,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Não autenticado' } }, { status: 401 });
     }
 
+    if (IS_DEMO) {
+      return NextResponse.json({ data: DEMO_DASHBOARD });
+    }
+
+    const { prisma } = await import('@/lib/prisma');
     const url = new URL(request.url);
     const period = url.searchParams.get('period') || '7d';
     const channelId = url.searchParams.get('channelId');
-
     const { start, end, prevStart, prevEnd } = getDateRange(period);
 
     const channelFilter = channelId
@@ -53,18 +52,12 @@ export async function GET(request: Request) {
 
     const [currentMetrics, previousMetrics] = await Promise.all([
       prisma.metric.findMany({
-        where: {
-          ...channelFilter,
-          date: { gte: start, lte: end },
-        },
+        where: { ...channelFilter, date: { gte: start, lte: end } },
         include: { channel: { select: { platform: true, accountName: true } } },
         orderBy: { date: 'asc' },
       }),
       prisma.metric.findMany({
-        where: {
-          ...channelFilter,
-          date: { gte: prevStart, lte: prevEnd },
-        },
+        where: { ...channelFilter, date: { gte: prevStart, lte: prevEnd } },
       }),
     ]);
 
@@ -72,22 +65,14 @@ export async function GET(request: Request) {
       impressions: metrics.reduce((sum, m) => sum + m.impressions, 0),
       reach: metrics.reduce((sum, m) => sum + m.reach, 0),
       engagement: metrics.reduce((sum, m) => sum + m.engagement, 0),
-      followers: metrics.length > 0
-        ? Math.max(...metrics.map(m => m.followersCount))
-        : 0,
+      followers: metrics.length > 0 ? Math.max(...metrics.map(m => m.followersCount)) : 0,
     });
 
     const current = sumMetrics(currentMetrics);
     const previous = sumMetrics(previousMetrics);
+    const engagementRate = current.impressions > 0 ? (current.engagement / current.impressions) * 100 : 0;
+    const prevEngagementRate = previous.impressions > 0 ? (previous.engagement / previous.impressions) * 100 : 0;
 
-    const engagementRate = current.impressions > 0
-      ? (current.engagement / current.impressions) * 100
-      : 0;
-    const prevEngagementRate = previous.impressions > 0
-      ? (previous.engagement / previous.impressions) * 100
-      : 0;
-
-    // Group by day for chart
     const byDay = new Map<string, { date: string; impressions: number; engagement: number; reach: number }>();
     for (const m of currentMetrics) {
       const dateKey = m.date.toISOString().split('T')[0];
@@ -98,17 +83,10 @@ export async function GET(request: Request) {
       byDay.set(dateKey, existing);
     }
 
-    // Group by channel for comparison
     const byChannel = new Map<string, { platform: string; name: string; impressions: number; engagement: number; followers: number }>();
     for (const m of currentMetrics) {
       const key = m.channelId;
-      const existing = byChannel.get(key) || {
-        platform: m.channel.platform,
-        name: m.channel.accountName,
-        impressions: 0,
-        engagement: 0,
-        followers: 0,
-      };
+      const existing = byChannel.get(key) || { platform: m.channel.platform, name: m.channel.accountName, impressions: 0, engagement: 0, followers: 0 };
       existing.impressions += m.impressions;
       existing.engagement += m.engagement;
       existing.followers = Math.max(existing.followers, m.followersCount);
@@ -124,38 +102,10 @@ export async function GET(request: Request) {
           engagementRate: Math.round(engagementRate * 100) / 100,
         },
         trends: {
-          impressions: {
-            current: current.impressions,
-            previous: previous.impressions,
-            change: previous.impressions > 0
-              ? Math.round(((current.impressions - previous.impressions) / previous.impressions) * 10000) / 100
-              : 0,
-            direction: getTrendDirection(current.impressions, previous.impressions),
-          },
-          engagement: {
-            current: current.engagement,
-            previous: previous.engagement,
-            change: previous.engagement > 0
-              ? Math.round(((current.engagement - previous.engagement) / previous.engagement) * 10000) / 100
-              : 0,
-            direction: getTrendDirection(current.engagement, previous.engagement),
-          },
-          followers: {
-            current: current.followers,
-            previous: previous.followers,
-            change: previous.followers > 0
-              ? Math.round(((current.followers - previous.followers) / previous.followers) * 10000) / 100
-              : 0,
-            direction: getTrendDirection(current.followers, previous.followers),
-          },
-          engagementRate: {
-            current: engagementRate,
-            previous: prevEngagementRate,
-            change: prevEngagementRate > 0
-              ? Math.round(((engagementRate - prevEngagementRate) / prevEngagementRate) * 10000) / 100
-              : 0,
-            direction: getTrendDirection(engagementRate, prevEngagementRate),
-          },
+          impressions: { current: current.impressions, previous: previous.impressions, change: previous.impressions > 0 ? Math.round(((current.impressions - previous.impressions) / previous.impressions) * 10000) / 100 : 0, direction: getTrendDirection(current.impressions, previous.impressions) },
+          engagement: { current: current.engagement, previous: previous.engagement, change: previous.engagement > 0 ? Math.round(((current.engagement - previous.engagement) / previous.engagement) * 10000) / 100 : 0, direction: getTrendDirection(current.engagement, previous.engagement) },
+          followers: { current: current.followers, previous: previous.followers, change: previous.followers > 0 ? Math.round(((current.followers - previous.followers) / previous.followers) * 10000) / 100 : 0, direction: getTrendDirection(current.followers, previous.followers) },
+          engagementRate: { current: engagementRate, previous: prevEngagementRate, change: prevEngagementRate > 0 ? Math.round(((engagementRate - prevEngagementRate) / prevEngagementRate) * 10000) / 100 : 0, direction: getTrendDirection(engagementRate, prevEngagementRate) },
         },
         chartData: {
           byDay: Array.from(byDay.values()),

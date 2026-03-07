@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { IS_DEMO, DEMO_CALENDAR } from '@/lib/demo-data';
 import { handleApiError } from '@/lib/api-error';
 
 const contentThemeValues = ['ENSINAMENTO', 'CONVITE', 'EXPERIENCIA', 'REFORCO_CONVITE', 'DICA_LEITURA', 'PODCAST', 'DIVULGACAO', 'OUTRO'] as const;
@@ -25,11 +25,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Não autenticado' } }, { status: 401 });
     }
 
+    if (IS_DEMO) {
+      return NextResponse.json({ data: DEMO_CALENDAR });
+    }
+
+    const { prisma } = await import('@/lib/prisma');
     const url = new URL(request.url);
     const month = parseInt(url.searchParams.get('month') || String(new Date().getMonth() + 1), 10);
     const year = parseInt(url.searchParams.get('year') || String(new Date().getFullYear()), 10);
-
-    // Optional filters
     const channelId = url.searchParams.get('channelId');
     const assigneeId = url.searchParams.get('assigneeId');
     const contentTheme = url.searchParams.get('contentTheme');
@@ -38,10 +41,7 @@ export async function GET(request: Request) {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
 
-    const where: Record<string, unknown> = {
-      scheduledDate: { gte: startDate, lte: endDate },
-    };
-
+    const where: Record<string, unknown> = { scheduledDate: { gte: startDate, lte: endDate } };
     if (channelId) where.channelId = channelId;
     if (assigneeId) where.assigneeId = assigneeId;
     if (contentTheme) where.contentTheme = contentTheme;
@@ -49,10 +49,7 @@ export async function GET(request: Request) {
 
     const entries = await prisma.contentCalendarEntry.findMany({
       where,
-      include: {
-        channel: { select: { platform: true, accountName: true } },
-        assignee: { select: { id: true, name: true } },
-      },
+      include: { channel: { select: { platform: true, accountName: true } }, assignee: { select: { id: true, name: true } } },
       orderBy: { scheduledDate: 'asc' },
     });
 
@@ -72,21 +69,20 @@ export async function POST(request: Request) {
     const body = await request.json();
     const data = createEntrySchema.parse(body);
 
+    if (IS_DEMO) {
+      return NextResponse.json({
+        data: { id: 'cal-new', ...data, channel: null, assignee: null, status: 'PLANNED', createdAt: new Date().toISOString() },
+      }, { status: 201 });
+    }
+
+    const { prisma } = await import('@/lib/prisma');
     const entry = await prisma.contentCalendarEntry.create({
       data: {
-        title: data.title,
-        description: data.description,
-        channelId: data.channelId || null,
-        category: data.category,
-        contentTheme: data.contentTheme || null,
-        contentFormat: data.contentFormat || null,
-        assigneeId: data.assigneeId || null,
-        scheduledDate: data.scheduledDate,
+        title: data.title, description: data.description, channelId: data.channelId || null,
+        category: data.category, contentTheme: data.contentTheme || null, contentFormat: data.contentFormat || null,
+        assigneeId: data.assigneeId || null, scheduledDate: data.scheduledDate,
       },
-      include: {
-        channel: { select: { platform: true, accountName: true } },
-        assignee: { select: { id: true, name: true } },
-      },
+      include: { channel: { select: { platform: true, accountName: true } }, assignee: { select: { id: true, name: true } } },
     });
 
     return NextResponse.json({ data: entry }, { status: 201 });

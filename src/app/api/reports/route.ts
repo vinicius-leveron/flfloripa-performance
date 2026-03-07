@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { IS_DEMO, DEMO_REPORTS } from '@/lib/demo-data';
 import { handleApiError } from '@/lib/api-error';
 
 const createReportSchema = z.object({
@@ -17,10 +17,13 @@ export async function GET() {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Não autenticado' } }, { status: 401 });
     }
 
+    if (IS_DEMO) {
+      return NextResponse.json({ data: DEMO_REPORTS });
+    }
+
+    const { prisma } = await import('@/lib/prisma');
     const reports = await prisma.report.findMany({
-      include: {
-        generatedBy: { select: { id: true, name: true } },
-      },
+      include: { generatedBy: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -40,34 +43,29 @@ export async function POST(request: Request) {
     const body = await request.json();
     const data = createReportSchema.parse(body);
 
-    // Gather metrics for the report period
+    if (IS_DEMO) {
+      return NextResponse.json({
+        data: {
+          report: { id: 'report-new', type: data.type, periodStart: data.periodStart, periodEnd: data.periodEnd, fileUrl: null, generatedBy: { id: session.user.id, name: session.user.name }, createdAt: new Date().toISOString() },
+          summary: { totalImpressions: 68420, totalEngagement: 3850, totalReach: 45000, newLeads: 11, channelCount: 3 },
+        },
+      }, { status: 201 });
+    }
+
+    const { prisma } = await import('@/lib/prisma');
+
     const metrics = await prisma.metric.findMany({
-      where: {
-        date: { gte: data.periodStart, lte: data.periodEnd },
-        channel: { userId: session.user.id },
-      },
+      where: { date: { gte: data.periodStart, lte: data.periodEnd }, channel: { userId: session.user.id } },
       include: { channel: { select: { platform: true, accountName: true } } },
     });
 
     const leads = await prisma.lead.count({
-      where: {
-        isDeleted: false,
-        createdAt: { gte: data.periodStart, lte: data.periodEnd },
-      },
+      where: { isDeleted: false, createdAt: { gte: data.periodStart, lte: data.periodEnd } },
     });
 
     const report = await prisma.report.create({
-      data: {
-        type: data.type,
-        periodStart: data.periodStart,
-        periodEnd: data.periodEnd,
-        generatedById: session.user.id,
-        // In production, this would generate a PDF and store the URL
-        fileUrl: null,
-      },
-      include: {
-        generatedBy: { select: { id: true, name: true } },
-      },
+      data: { type: data.type, periodStart: data.periodStart, periodEnd: data.periodEnd, generatedById: session.user.id, fileUrl: null },
+      include: { generatedBy: { select: { id: true, name: true } } },
     });
 
     return NextResponse.json({

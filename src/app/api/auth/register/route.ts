@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import bcrypt from 'bcryptjs';
-import { prisma } from '@/lib/prisma';
+import { IS_DEMO } from '@/lib/demo-data';
 import { handleApiError, AppError } from '@/lib/api-error';
 
 const registerSchema = z.object({
@@ -15,54 +14,38 @@ export async function POST(request: Request) {
     const body = await request.json();
     const data = registerSchema.parse(body);
 
-    const existing = await prisma.user.findUnique({
-      where: { email: data.email },
-    });
-    if (existing) {
-      throw new AppError('CONFLICT', 'Email já cadastrado', 409);
+    if (IS_DEMO) {
+      return NextResponse.json({
+        data: { id: 'user-new', name: data.name, email: data.email, role: 'ADMIN', createdAt: new Date().toISOString() },
+      }, { status: 201 });
     }
+
+    const { prisma } = await import('@/lib/prisma');
+    const bcrypt = await import('bcryptjs');
+
+    const existing = await prisma.user.findUnique({ where: { email: data.email } });
+    if (existing) throw new AppError('CONFLICT', 'Email já cadastrado', 409);
 
     const userCount = await prisma.user.count();
     const role = userCount === 0 ? 'ADMIN' : 'VIEWER';
-
     const passwordHash = await bcrypt.hash(data.password, 12);
 
     const user = await prisma.user.create({
-      data: {
-        name: data.name,
-        email: data.email,
-        passwordHash,
-        role,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
+      data: { name: data.name, email: data.email, passwordHash, role },
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
     });
 
     return NextResponse.json({ data: user }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       const details: Record<string, string[]> = {};
-      const issues = error.issues ?? [];
-      issues.forEach((e) => {
+      (error.issues ?? []).forEach((e) => {
         const field = e.path.join('.');
         if (!details[field]) details[field] = [];
         details[field].push(e.message);
       });
       return NextResponse.json(
-        {
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Dados inválidos',
-            details,
-            timestamp: new Date().toISOString(),
-            requestId: crypto.randomUUID(),
-          },
-        },
+        { error: { code: 'VALIDATION_ERROR', message: 'Dados inválidos', details, timestamp: new Date().toISOString(), requestId: crypto.randomUUID() } },
         { status: 400 }
       );
     }

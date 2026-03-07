@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { IS_DEMO, DEMO_LEADS } from '@/lib/demo-data';
 import { handleApiError } from '@/lib/api-error';
 
 const createLeadSchema = z.object({
@@ -11,17 +11,14 @@ const createLeadSchema = z.object({
   channelOrigin: z.string().optional(),
   currentStageId: z.string(),
   notes: z.string().optional(),
-  // Perfil / Avatar
   lifeMoment: z.string().optional(),
   inquiry: z.string().optional(),
   source: z.string().optional(),
-  // Tracking de origem
   campaignId: z.string().optional(),
   adSpend: z.number().optional(),
   utmSource: z.string().optional(),
   utmMedium: z.string().optional(),
   utmCampaign: z.string().optional(),
-  // VSL
   vslWatched: z.boolean().optional(),
   vslWatchTime: z.number().int().optional(),
 });
@@ -33,6 +30,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Não autenticado' } }, { status: 401 });
     }
 
+    if (IS_DEMO) {
+      const url = new URL(request.url);
+      const stageId = url.searchParams.get('stageId');
+      const search = url.searchParams.get('search')?.toLowerCase();
+      let filtered = DEMO_LEADS;
+      if (stageId) filtered = filtered.filter(l => l.currentStage.id === stageId);
+      if (search) filtered = filtered.filter(l => l.name.toLowerCase().includes(search));
+      return NextResponse.json({ data: filtered, meta: { total: filtered.length, page: 1, limit: 20, totalPages: 1 } });
+    }
+
+    const { prisma } = await import('@/lib/prisma');
     const url = new URL(request.url);
     const stageId = url.searchParams.get('stageId');
     const search = url.searchParams.get('search');
@@ -60,26 +68,17 @@ export async function GET(request: Request) {
           currentStage: { select: { id: true, name: true, position: true } },
           registeredBy: { select: { id: true, name: true } },
           events: {
-            orderBy: { createdAt: 'desc' },
-            take: 5,
-            include: {
-              fromStage: { select: { name: true } },
-              toStage: { select: { name: true } },
-              createdBy: { select: { name: true } },
-            },
+            orderBy: { createdAt: 'desc' }, take: 5,
+            include: { fromStage: { select: { name: true } }, toStage: { select: { name: true } }, createdBy: { select: { name: true } } },
           },
         },
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
+        skip: (page - 1) * limit, take: limit,
       }),
       prisma.lead.count({ where }),
     ]);
 
-    return NextResponse.json({
-      data: leads,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
-    });
+    return NextResponse.json({ data: leads, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (error) {
     return handleApiError(error);
   }
@@ -95,25 +94,23 @@ export async function POST(request: Request) {
     const body = await request.json();
     const data = createLeadSchema.parse(body);
 
+    if (IS_DEMO) {
+      return NextResponse.json({
+        data: { id: 'lead-new', ...data, currentStage: { id: data.currentStageId, name: 'Impactado', position: 1 }, registeredBy: { id: session.user.id, name: session.user.name }, createdAt: new Date().toISOString() },
+      }, { status: 201 });
+    }
+
+    const { prisma } = await import('@/lib/prisma');
+
     const lead = await prisma.lead.create({
       data: {
-        name: data.name,
-        email: data.email || null,
-        phone: data.phone || null,
-        channelOrigin: data.channelOrigin || null,
-        currentStageId: data.currentStageId,
-        registeredById: session.user.id,
-        notes: data.notes || null,
-        lifeMoment: data.lifeMoment || null,
-        inquiry: data.inquiry || null,
-        source: data.source || null,
-        campaignId: data.campaignId || null,
-        adSpend: data.adSpend ?? null,
-        utmSource: data.utmSource || null,
-        utmMedium: data.utmMedium || null,
-        utmCampaign: data.utmCampaign || null,
-        vslWatched: data.vslWatched ?? false,
-        vslWatchTime: data.vslWatchTime ?? null,
+        name: data.name, email: data.email || null, phone: data.phone || null,
+        channelOrigin: data.channelOrigin || null, currentStageId: data.currentStageId,
+        registeredById: session.user.id, notes: data.notes || null,
+        lifeMoment: data.lifeMoment || null, inquiry: data.inquiry || null, source: data.source || null,
+        campaignId: data.campaignId || null, adSpend: data.adSpend ?? null,
+        utmSource: data.utmSource || null, utmMedium: data.utmMedium || null, utmCampaign: data.utmCampaign || null,
+        vslWatched: data.vslWatched ?? false, vslWatchTime: data.vslWatchTime ?? null,
       },
       include: {
         currentStage: { select: { id: true, name: true, position: true } },
