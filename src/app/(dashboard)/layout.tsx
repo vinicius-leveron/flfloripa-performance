@@ -22,7 +22,7 @@ export default async function DashboardLayout({
           <Sidebar userName={name} userRole={role} />
           <div className="flex flex-1 flex-col overflow-hidden">
             <Header userName={name} userRole={role} />
-            <main className="flex-1 overflow-auto bg-gray-50 p-6">{children}</main>
+            <main id="main-content" className="flex-1 overflow-auto bg-gray-50 p-4 md:p-6">{children}</main>
           </div>
         </div>
       </QueryProvider>
