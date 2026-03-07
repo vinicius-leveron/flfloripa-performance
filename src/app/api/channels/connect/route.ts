@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth';
 import { handleApiError } from '@/lib/api-error';
 
 const connectSchema = z.object({
-  platform: z.enum(['INSTAGRAM', 'TIKTOK', 'LINKEDIN']),
+  platform: z.enum(['INSTAGRAM', 'TIKTOK', 'LINKEDIN', 'YOUTUBE']),
 });
 
 const OAUTH_CONFIGS = {
@@ -20,6 +20,10 @@ const OAUTH_CONFIGS = {
     authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
     scope: 'r_organization_social,r_organization_admin',
   },
+  YOUTUBE: {
+    authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+    scope: 'https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly',
+  },
 } as const;
 
 export async function POST(request: Request) {
@@ -33,7 +37,9 @@ export async function POST(request: Request) {
     const { platform } = connectSchema.parse(body);
 
     const config = OAUTH_CONFIGS[platform];
-    const clientId = process.env[`${platform}_CLIENT_ID`] || '';
+    const clientId = platform === 'YOUTUBE'
+      ? (process.env.GOOGLE_CLIENT_ID || '')
+      : (process.env[`${platform}_CLIENT_ID`] || '');
     const redirectUri = `${process.env.NEXTAUTH_URL}/api/channels/callback`;
 
     const state = Buffer.from(JSON.stringify({
@@ -48,6 +54,11 @@ export async function POST(request: Request) {
       response_type: 'code',
       state,
     });
+
+    if (platform === 'YOUTUBE') {
+      params.set('access_type', 'offline');
+      params.set('prompt', 'consent');
+    }
 
     const authUrl = `${config.authUrl}?${params.toString()}`;
 

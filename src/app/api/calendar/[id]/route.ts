@@ -4,11 +4,16 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { handleApiError, AppError } from '@/lib/api-error';
 
+const contentThemeValues = ['ENSINAMENTO', 'CONVITE', 'EXPERIENCIA', 'REFORCO_CONVITE', 'DICA_LEITURA', 'PODCAST', 'DIVULGACAO', 'OUTRO'] as const;
+const contentFormatValues = ['FEED_POST', 'REEL', 'STORY', 'VIDEO_LONGO', 'IMAGEM_ESTATICA', 'EVENTO', 'REPOST', 'OUTRO'] as const;
+
 const updateEntrySchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
   channelId: z.string().nullable().optional(),
   category: z.enum(['EDUCATIONAL', 'INSTITUTIONAL', 'INVITE', 'TESTIMONY']).optional(),
+  contentTheme: z.enum(contentThemeValues).nullable().optional(),
+  contentFormat: z.enum(contentFormatValues).nullable().optional(),
   assigneeId: z.string().nullable().optional(),
   status: z.enum(['PLANNED', 'CREATED', 'PUBLISHED']).optional(),
   scheduledDate: z.string().transform((s) => new Date(s)).optional(),

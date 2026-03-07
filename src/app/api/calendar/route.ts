@@ -4,11 +4,16 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { handleApiError } from '@/lib/api-error';
 
+const contentThemeValues = ['ENSINAMENTO', 'CONVITE', 'EXPERIENCIA', 'REFORCO_CONVITE', 'DICA_LEITURA', 'PODCAST', 'DIVULGACAO', 'OUTRO'] as const;
+const contentFormatValues = ['FEED_POST', 'REEL', 'STORY', 'VIDEO_LONGO', 'IMAGEM_ESTATICA', 'EVENTO', 'REPOST', 'OUTRO'] as const;
+
 const createEntrySchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
   channelId: z.string().optional(),
   category: z.enum(['EDUCATIONAL', 'INSTITUTIONAL', 'INVITE', 'TESTIMONY']),
+  contentTheme: z.enum(contentThemeValues).optional(),
+  contentFormat: z.enum(contentFormatValues).optional(),
   assigneeId: z.string().optional(),
   scheduledDate: z.string().transform((s) => new Date(s)),
 });
@@ -24,13 +29,26 @@ export async function GET(request: Request) {
     const month = parseInt(url.searchParams.get('month') || String(new Date().getMonth() + 1), 10);
     const year = parseInt(url.searchParams.get('year') || String(new Date().getFullYear()), 10);
 
+    // Optional filters
+    const channelId = url.searchParams.get('channelId');
+    const assigneeId = url.searchParams.get('assigneeId');
+    const contentTheme = url.searchParams.get('contentTheme');
+    const contentFormat = url.searchParams.get('contentFormat');
+
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
 
+    const where: Record<string, unknown> = {
+      scheduledDate: { gte: startDate, lte: endDate },
+    };
+
+    if (channelId) where.channelId = channelId;
+    if (assigneeId) where.assigneeId = assigneeId;
+    if (contentTheme) where.contentTheme = contentTheme;
+    if (contentFormat) where.contentFormat = contentFormat;
+
     const entries = await prisma.contentCalendarEntry.findMany({
-      where: {
-        scheduledDate: { gte: startDate, lte: endDate },
-      },
+      where,
       include: {
         channel: { select: { platform: true, accountName: true } },
         assignee: { select: { id: true, name: true } },
@@ -60,6 +78,8 @@ export async function POST(request: Request) {
         description: data.description,
         channelId: data.channelId || null,
         category: data.category,
+        contentTheme: data.contentTheme || null,
+        contentFormat: data.contentFormat || null,
         assigneeId: data.assigneeId || null,
         scheduledDate: data.scheduledDate,
       },

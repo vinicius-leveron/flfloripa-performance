@@ -1,9 +1,11 @@
 export type UserRole = 'ADMIN' | 'EDITOR' | 'VIEWER';
-export type ChannelPlatform = 'INSTAGRAM' | 'TIKTOK' | 'LINKEDIN';
+export type ChannelPlatform = 'INSTAGRAM' | 'TIKTOK' | 'LINKEDIN' | 'YOUTUBE';
 export type ChannelStatus = 'CONNECTED' | 'DISCONNECTED' | 'ERROR';
 export type CampaignStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED';
 export type ContentCategory = 'EDUCATIONAL' | 'INSTITUTIONAL' | 'INVITE' | 'TESTIMONY';
 export type ContentStatus = 'PLANNED' | 'CREATED' | 'PUBLISHED';
+export type ContentTheme = 'ENSINAMENTO' | 'CONVITE' | 'EXPERIENCIA' | 'REFORCO_CONVITE' | 'DICA_LEITURA' | 'PODCAST' | 'DIVULGACAO' | 'OUTRO';
+export type ContentFormat = 'FEED_POST' | 'REEL' | 'STORY' | 'VIDEO_LONGO' | 'IMAGEM_ESTATICA' | 'EVENTO' | 'REPOST' | 'OUTRO';
 export type FunnelSource = 'AUTO' | 'MANUAL';
 export type AlertType = 'ENGAGEMENT_DROP' | 'CAMPAIGN_UNDERPERFORM' | 'CADENCE_MISS';
 export type ReportType = 'WEEKLY' | 'MONTHLY' | 'CUSTOM';
@@ -12,6 +14,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  image: string | null;
   role: UserRole;
   createdAt: Date;
   updatedAt: Date;
@@ -65,6 +68,8 @@ export interface ContentCalendarEntry {
   description: string | null;
   channelId: string | null;
   category: ContentCategory;
+  contentTheme: ContentTheme | null;
+  contentFormat: ContentFormat | null;
   assigneeId: string | null;
   status: ContentStatus;
   scheduledDate: Date;

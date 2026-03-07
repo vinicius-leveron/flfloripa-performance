@@ -17,6 +17,29 @@ enum ChannelPlatform {
   INSTAGRAM
   TIKTOK
   LINKEDIN
+  YOUTUBE
+}
+
+enum ContentTheme {
+  ENSINAMENTO
+  CONVITE
+  EXPERIENCIA
+  REFORCO_CONVITE
+  DICA_LEITURA
+  PODCAST
+  DIVULGACAO
+  OUTRO
+}
+
+enum ContentFormat {
+  FEED_POST
+  REEL
+  STORY
+  VIDEO_LONGO
+  IMAGEM_ESTATICA
+  EVENTO
+  REPOST
+  OUTRO
 }
 
 enum ChannelStatus {
@@ -65,11 +88,13 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String
-  passwordHash String   @map("password_hash")
+  passwordHash String?  @map("password_hash")
+  image        String?
   role         UserRole @default(VIEWER)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  accounts        Account[]
   channels        Channel[]
   calendarEntries ContentCalendarEntry[] @relation("assignee")
   registeredLeads Lead[]                @relation("registeredBy")
@@ -77,6 +102,25 @@ model User {
   reports         Report[]              @relation("generatedBy")
 
   @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
 }
 
 model Channel {
@@ -238,6 +282,8 @@ model ContentCalendarEntry {
   channelId     String?         @map("channel_id")
   category      ContentCategory
   assigneeId    String?         @map("assignee_id")
+  contentTheme  ContentTheme?   @map("content_theme")
+  contentFormat ContentFormat?  @map("content_format")
   status        ContentStatus   @default(PLANNED)
   scheduledDate DateTime        @db.Date @map("scheduled_date")
   createdAt     DateTime        @default(now()) @map("created_at")

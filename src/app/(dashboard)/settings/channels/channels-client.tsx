@@ -8,7 +8,7 @@ import { RefreshCw, Unplug, CheckCircle2, XCircle, AlertTriangle } from 'lucide-
 
 interface ChannelData {
   id: string;
-  platform: 'INSTAGRAM' | 'TIKTOK' | 'LINKEDIN';
+  platform: 'INSTAGRAM' | 'TIKTOK' | 'LINKEDIN' | 'YOUTUBE';
   accountName: string;
   accountId: string;
   status: 'CONNECTED' | 'DISCONNECTED' | 'ERROR';
@@ -20,6 +20,7 @@ const platformConfig = {
   INSTAGRAM: { label: 'Instagram', color: 'bg-pink-100 text-pink-700', icon: '📸' },
   TIKTOK: { label: 'TikTok', color: 'bg-gray-100 text-gray-700', icon: '🎵' },
   LINKEDIN: { label: 'LinkedIn', color: 'bg-blue-100 text-blue-700', icon: '💼' },
+  YOUTUBE: { label: 'YouTube', color: 'bg-red-100 text-red-700', icon: '🎬' },
 } as const;
 
 const statusConfig = {
@@ -28,7 +29,7 @@ const statusConfig = {
   ERROR: { label: 'Erro', icon: AlertTriangle, color: 'text-red-500' },
 } as const;
 
-const allPlatforms: ('INSTAGRAM' | 'TIKTOK' | 'LINKEDIN')[] = ['INSTAGRAM', 'TIKTOK', 'LINKEDIN'];
+const allPlatforms: ('INSTAGRAM' | 'TIKTOK' | 'LINKEDIN' | 'YOUTUBE')[] = ['INSTAGRAM', 'TIKTOK', 'LINKEDIN', 'YOUTUBE'];
 
 export function ChannelsClient() {
   const queryClient = useQueryClient();
@@ -76,13 +77,13 @@ export function ChannelsClient() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}><CardContent className="pt-6"><Skeleton className="h-32 w-full" /></CardContent></Card>
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {allPlatforms.map((platform) => {
             const config = platformConfig[platform];
             const channel = channels.find(c => c.platform === platform);
