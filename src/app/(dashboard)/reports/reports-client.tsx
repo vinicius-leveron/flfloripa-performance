@@ -7,7 +7,8 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Select } from '@/shared/components/ui/select';
 import { Skeleton } from '@/shared/components/ui/skeleton';
-import { FileText, Plus, Download } from 'lucide-react';
+import { Badge } from '@/shared/components/ui/badge';
+import { FileText, Plus, Download, Calendar, User } from 'lucide-react';
 
 interface ReportData {
   id: string;
@@ -23,6 +24,12 @@ const typeLabels: Record<string, string> = {
   WEEKLY: 'Semanal',
   MONTHLY: 'Mensal',
   CUSTOM: 'Personalizado',
+};
+
+const typeVariant: Record<string, 'default' | 'secondary' | 'info'> = {
+  WEEKLY: 'info',
+  MONTHLY: 'default',
+  CUSTOM: 'secondary',
 };
 
 const typeOptions = [
@@ -79,30 +86,41 @@ export function ReportsClient() {
           <CardHeader><CardTitle className="text-lg">Novo Relatório</CardTitle></CardHeader>
           <CardContent>
             <form
-              className="grid gap-4 md:grid-cols-3"
+              className="space-y-4"
               onSubmit={(e) => {
                 e.preventDefault();
                 createMutation.mutate(formData);
               }}
             >
-              <Select
-                options={typeOptions}
-                value={formData.type}
-                onChange={(e) => setFormData(d => ({ ...d, type: e.target.value }))}
-              />
-              <Input
-                type="date"
-                value={formData.periodStart}
-                onChange={(e) => setFormData(d => ({ ...d, periodStart: e.target.value }))}
-                required
-              />
-              <Input
-                type="date"
-                value={formData.periodEnd}
-                onChange={(e) => setFormData(d => ({ ...d, periodEnd: e.target.value }))}
-                required
-              />
-              <div className="md:col-span-3 flex gap-2">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Tipo</label>
+                  <Select
+                    options={typeOptions}
+                    value={formData.type}
+                    onChange={(e) => setFormData(d => ({ ...d, type: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Início do período</label>
+                  <Input
+                    type="date"
+                    value={formData.periodStart}
+                    onChange={(e) => setFormData(d => ({ ...d, periodStart: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Fim do período</label>
+                  <Input
+                    type="date"
+                    value={formData.periodEnd}
+                    onChange={(e) => setFormData(d => ({ ...d, periodEnd: e.target.value }))}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
                 <Button type="submit" disabled={createMutation.isPending}>
                   {createMutation.isPending ? 'Gerando...' : 'Gerar'}
                 </Button>
@@ -121,7 +139,8 @@ export function ReportsClient() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FileText className="mb-4 h-12 w-12 text-gray-300" />
-            <p className="text-gray-500">Nenhum relatório gerado ainda</p>
+            <h3 className="text-lg font-medium text-gray-900">Nenhum relatório gerado</h3>
+            <p className="mt-1 text-sm text-gray-500">Crie seu primeiro relatório para compartilhar com a comissão</p>
             <Button className="mt-4" onClick={() => setShowForm(true)}>
               <Plus size={16} className="mr-1" /> Gerar primeiro relatório
             </Button>
@@ -130,31 +149,47 @@ export function ReportsClient() {
       ) : (
         <div className="space-y-3">
           {reports.map((report) => (
-            <Card key={report.id} className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-md bg-[#FDF2E9] p-2 text-[#E8792A]">
-                    <FileText size={20} />
+            <Card key={report.id} className="transition-shadow hover:shadow-md">
+              <div className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-md bg-[#FDF2E9] p-2.5 text-[#E8792A]">
+                      <FileText size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">
+                          Relatório {typeLabels[report.type]}
+                        </p>
+                        <Badge variant={typeVariant[report.type] || 'secondary'} className="text-[10px]">
+                          {typeLabels[report.type]}
+                        </Badge>
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-3 text-xs text-gray-500">
+                        <span className="flex items-center gap-0.5">
+                          <Calendar size={10} />
+                          {new Date(report.periodStart).toLocaleDateString('pt-BR')} — {new Date(report.periodEnd).toLocaleDateString('pt-BR')}
+                        </span>
+                        <span className="flex items-center gap-0.5">
+                          <User size={10} />
+                          {report.generatedBy.name}
+                        </span>
+                        <span className="text-gray-400">
+                          {new Date(report.createdAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium">
-                      Relatório {typeLabels[report.type]}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(report.periodStart).toLocaleDateString('pt-BR')} — {new Date(report.periodEnd).toLocaleDateString('pt-BR')}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      Gerado por {report.generatedBy.name} em {new Date(report.createdAt).toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
+                  {report.fileUrl ? (
+                    <a href={report.fileUrl} target="_blank" rel="noreferrer">
+                      <Button variant="outline" size="sm">
+                        <Download size={14} className="mr-1" /> PDF
+                      </Button>
+                    </a>
+                  ) : (
+                    <Badge variant="warning" className="text-[10px]">Processando</Badge>
+                  )}
                 </div>
-                {report.fileUrl && (
-                  <a href={report.fileUrl} target="_blank" rel="noreferrer"
-                    className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 h-9 text-sm font-medium hover:bg-gray-50"
-                  >
-                    <Download size={14} className="mr-1" /> PDF
-                  </a>
-                )}
               </div>
             </Card>
           ))}
