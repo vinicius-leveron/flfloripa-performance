@@ -2,7 +2,14 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #1B2A4A;
+
+  /* Logosofia Brand Colors */
+  --brand-orange: #E8792A;
+  --brand-orange-light: #FDF2E9;
+  --brand-orange-hover: #D16A22;
+  --brand-navy: #1B2A4A;
+  --brand-navy-light: #2A3F6A;
 }
 
 @theme inline {
@@ -10,13 +17,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {

@@ -43,10 +43,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
+    <div className="relative flex min-h-screen items-center justify-center bg-white px-4 overflow-hidden">
+      {/* Decorative gradient blob */}
+      <div
+        className="pointer-events-none absolute -top-32 -right-32 h-[500px] w-[500px] rounded-full opacity-60 blur-3xl"
+        style={{ background: 'radial-gradient(circle, #F5A623 0%, #E8792A 50%, transparent 70%)' }}
+      />
+      <div
+        className="pointer-events-none absolute -bottom-48 -left-48 h-[400px] w-[400px] rounded-full opacity-30 blur-3xl"
+        style={{ background: 'radial-gradient(circle, #F5A623 0%, #E8792A 50%, transparent 70%)' }}
+      />
+
+      <Card className="relative z-10 w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">FLFloripa Performance</CardTitle>
+          <CardTitle className="text-2xl text-[#E8792A]">FLFloripa Performance</CardTitle>
           <CardDescription>Entre com sua conta para acessar a plataforma</CardDescription>
         </CardHeader>
         <CardContent>
@@ -116,7 +126,7 @@ export default function LoginPage() {
           </div>
           <p className="mt-4 text-center text-sm text-gray-500">
             Não tem conta?{' '}
-            <Link href="/register" className="text-blue-600 hover:underline">
+            <Link href="/register" className="text-[#E8792A] hover:underline">
               Cadastre-se
             </Link>
           </p>

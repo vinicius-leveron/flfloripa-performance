@@ -14,12 +14,12 @@ interface FunnelStageData {
 }
 
 const stageColors = [
-  'bg-blue-500',
-  'bg-indigo-500',
-  'bg-violet-500',
-  'bg-purple-500',
-  'bg-fuchsia-500',
-  'bg-pink-500',
+  'bg-[#1B2A4A]',
+  'bg-[#2A3F6A]',
+  'bg-[#E8792A]',
+  'bg-[#D16A22]',
+  'bg-[#F5A623]',
+  'bg-[#F7C177]',
 ];
 
 export function FunnelClient() {

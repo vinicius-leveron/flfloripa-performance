@@ -331,14 +331,14 @@ export function CalendarClient() {
         <div className="flex gap-2">
           <div className="flex rounded-md border">
             <button
-              className={`px-3 py-1.5 text-sm ${viewMode === 'monthly' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50'} rounded-l-md`}
+              className={`px-3 py-1.5 text-sm ${viewMode === 'monthly' ? 'bg-[#1B2A4A] text-white' : 'text-gray-600 hover:bg-gray-50'} rounded-l-md`}
               onClick={() => setViewMode('monthly')}
             >
               <Calendar size={14} className="inline mr-1" />
               Mensal
             </button>
             <button
-              className={`px-3 py-1.5 text-sm ${viewMode === 'weekly' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50'} rounded-r-md`}
+              className={`px-3 py-1.5 text-sm ${viewMode === 'weekly' ? 'bg-[#1B2A4A] text-white' : 'text-gray-600 hover:bg-gray-50'} rounded-r-md`}
               onClick={() => setViewMode('weekly')}
             >
               <List size={14} className="inline mr-1" />
@@ -469,8 +469,8 @@ export function CalendarClient() {
             const isToday = dateStr === new Date().toISOString().split('T')[0];
 
             return (
-              <div key={i} className={`min-h-[200px] rounded-lg border p-2 ${isToday ? 'border-blue-400 bg-blue-50/50' : 'border-gray-200'}`}>
-                <div className={`mb-2 text-center text-sm font-semibold ${isToday ? 'text-blue-600' : 'text-gray-600'}`}>
+              <div key={i} className={`min-h-[200px] rounded-lg border p-2 ${isToday ? 'border-[#E8792A] bg-[#FDF2E9]/50' : 'border-gray-200'}`}>
+                <div className={`mb-2 text-center text-sm font-semibold ${isToday ? 'text-[#E8792A]' : 'text-gray-600'}`}>
                   <div>{weekDays[i]}</div>
                   <div className="text-lg">{date.getDate()}</div>
                 </div>

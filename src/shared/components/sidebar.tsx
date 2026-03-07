@@ -40,17 +40,17 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'flex h-screen flex-col border-r border-gray-200 bg-white transition-all duration-200',
+        'flex h-screen flex-col bg-[#1B2A4A] transition-all duration-200',
         collapsed ? 'w-16' : 'w-64'
       )}
     >
-      <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4">
+      <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
         {!collapsed && (
-          <span className="text-lg font-bold text-blue-600">FLFloripa</span>
+          <span className="text-lg font-bold text-[#E8792A]">FLFloripa</span>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="rounded-md p-1.5 hover:bg-gray-100"
+          className="rounded-md p-1.5 text-gray-400 hover:bg-white/10"
           aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
         >
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
@@ -67,8 +67,8 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
               className={cn(
                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-[#E8792A]/10 text-[#E8792A]'
+                  : 'text-gray-300 hover:bg-white/10 hover:text-white'
               )}
               title={collapsed ? item.label : undefined}
             >
@@ -79,15 +79,15 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
         })}
       </nav>
 
-      <div className="border-t border-gray-200 p-4">
+      <div className="border-t border-white/10 p-4">
         {!collapsed && (
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-sm font-medium text-blue-600">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E8792A]/20 text-sm font-medium text-[#E8792A]">
               {userName.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-gray-900">{userName}</p>
-              <p className="text-xs text-gray-500">{userRole}</p>
+              <p className="truncate text-sm font-medium text-white">{userName}</p>
+              <p className="text-xs text-gray-400">{userRole}</p>
             </div>
           </div>
         )}

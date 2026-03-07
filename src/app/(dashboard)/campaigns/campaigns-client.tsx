@@ -97,7 +97,7 @@ export function CampaignsClient() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="rounded-md bg-blue-50 p-2 text-blue-600">
+                    <div className="rounded-md bg-[#FDF2E9] p-2 text-[#E8792A]">
                       <Eye size={16} />
                     </div>
                     <div>

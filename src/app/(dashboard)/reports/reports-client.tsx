@@ -133,7 +133,7 @@ export function ReportsClient() {
             <Card key={report.id} className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-md bg-blue-50 p-2 text-blue-600">
+                  <div className="rounded-md bg-[#FDF2E9] p-2 text-[#E8792A]">
                     <FileText size={20} />
                   </div>
                   <div>

@@ -32,7 +32,7 @@ export default async function SettingsPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <Link href="/settings/channels">
-          <Card className="cursor-pointer transition-colors hover:border-blue-300">
+          <Card className="cursor-pointer transition-colors hover:border-[#E8792A]">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Link2 size={20} />
@@ -47,7 +47,7 @@ export default async function SettingsPage() {
           </Card>
         </Link>
         <Link href="/settings/alerts">
-          <Card className="cursor-pointer transition-colors hover:border-blue-300">
+          <Card className="cursor-pointer transition-colors hover:border-[#E8792A]">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Bell size={20} />

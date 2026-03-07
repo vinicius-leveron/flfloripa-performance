@@ -89,7 +89,7 @@ export function DashboardClient() {
   const hasData = dashboard && dashboard.chartData.byDay.length > 0;
 
   const kpiCards = [
-    { title: 'Impressões', key: 'impressions', icon: Eye, color: 'text-blue-600 bg-blue-50', value: dashboard?.kpis.totalImpressions },
+    { title: 'Impressões', key: 'impressions', icon: Eye, color: 'text-[#E8792A] bg-[#FDF2E9]', value: dashboard?.kpis.totalImpressions },
     { title: 'Engajamento', key: 'engagement', icon: TrendingUp, color: 'text-green-600 bg-green-50', value: dashboard?.kpis.totalEngagement },
     { title: 'Seguidores', key: 'followers', icon: Users, color: 'text-purple-600 bg-purple-50', value: dashboard?.kpis.totalFollowers },
     { title: 'Taxa de Engajamento', key: 'engagementRate', icon: BarChart3, color: 'text-orange-600 bg-orange-50', value: dashboard?.kpis.engagementRate, suffix: '%' },
