@@ -1,0 +1,303 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum ChannelPlatform {
+  INSTAGRAM
+  TIKTOK
+  LINKEDIN
+}
+
+enum ChannelStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum CampaignStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum ContentCategory {
+  EDUCATIONAL
+  INSTITUTIONAL
+  INVITE
+  TESTIMONY
+}
+
+enum ContentStatus {
+  PLANNED
+  CREATED
+  PUBLISHED
+}
+
+enum FunnelSource {
+  AUTO
+  MANUAL
+}
+
+enum AlertType {
+  ENGAGEMENT_DROP
+  CAMPAIGN_UNDERPERFORM
+  CADENCE_MISS
+}
+
+enum ReportType {
+  WEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(VIEWER)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  channels        Channel[]
+  calendarEntries ContentCalendarEntry[] @relation("assignee")
+  registeredLeads Lead[]                @relation("registeredBy")
+  leadEvents      LeadEvent[]           @relation("createdBy")
+  reports         Report[]              @relation("generatedBy")
+
+  @@map("users")
+}
+
+model Channel {
+  id             String          @id @default(cuid())
+  platform       ChannelPlatform
+  accountName    String          @map("account_name")
+  accountId      String          @map("account_id")
+  accessToken    String          @map("access_token")
+  refreshToken   String?         @map("refresh_token")
+  tokenExpiresAt DateTime?       @map("token_expires_at")
+  status         ChannelStatus   @default(CONNECTED)
+  userId         String          @map("user_id")
+  lastSyncAt     DateTime?       @map("last_sync_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  user            User                   @relation(fields: [userId], references: [id])
+  metrics         Metric[]
+  posts           Post[]
+  campaigns       Campaign[]
+  calendarEntries ContentCalendarEntry[]
+  alerts          Alert[]                @relation("channelAlerts")
+
+  @@map("channels")
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  externalId  String   @map("external_id")
+  channelId   String   @map("channel_id")
+  title       String?
+  url         String?
+  publishedAt DateTime @map("published_at")
+  metrics     Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, externalId])
+  @@map("posts")
+}
+
+model Metric {
+  id             String   @id @default(cuid())
+  channelId      String   @map("channel_id")
+  date           DateTime @db.Date
+  impressions    Int      @default(0)
+  reach          Int      @default(0)
+  engagement     Int      @default(0)
+  profileVisits  Int      @default(0) @map("profile_visits")
+  linkClicks     Int      @default(0) @map("link_clicks")
+  followersCount Int      @default(0) @map("followers_count")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, date])
+  @@index([channelId, date])
+  @@map("metrics")
+}
+
+model Campaign {
+  id             String         @id @default(cuid())
+  metaCampaignId String         @unique @map("meta_campaign_id")
+  channelId      String         @map("channel_id")
+  name           String
+  status         CampaignStatus @default(ACTIVE)
+  objective      String?
+  budget         Float          @default(0)
+  startDate      DateTime?      @map("start_date")
+  endDate        DateTime?      @map("end_date")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  channel Channel          @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  metrics CampaignMetric[]
+  alerts  Alert[]          @relation("campaignAlerts")
+
+  @@map("campaigns")
+}
+
+model CampaignMetric {
+  id          String   @id @default(cuid())
+  campaignId  String   @map("campaign_id")
+  date        DateTime @db.Date
+  spend       Float    @default(0)
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  cpm         Float    @default(0)
+  cpc         Float    @default(0)
+  ctr         Float    @default(0)
+  conversions Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, date])
+  @@index([campaignId, date])
+  @@map("campaign_metrics")
+}
+
+model FunnelStage {
+  id          String       @id @default(cuid())
+  name        String
+  position    Int
+  description String?
+  source      FunnelSource @default(MANUAL)
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  leads      Lead[]
+  eventsFrom LeadEvent[] @relation("fromStage")
+  eventsTo   LeadEvent[] @relation("toStage")
+
+  @@map("funnel_stages")
+}
+
+model Lead {
+  id             String   @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  channelOrigin  String?  @map("channel_origin")
+  currentStageId String   @map("current_stage_id")
+  registeredById String   @map("registered_by_id")
+  notes          String?
+  isDeleted      Boolean  @default(false) @map("is_deleted")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  currentStage FunnelStage @relation(fields: [currentStageId], references: [id])
+  registeredBy User        @relation("registeredBy", fields: [registeredById], references: [id])
+  events       LeadEvent[]
+
+  @@index([currentStageId])
+  @@index([isDeleted])
+  @@map("leads")
+}
+
+model LeadEvent {
+  id          String   @id @default(cuid())
+  leadId      String   @map("lead_id")
+  fromStageId String   @map("from_stage_id")
+  toStageId   String   @map("to_stage_id")
+  notes       String?
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  lead      Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fromStage FunnelStage @relation("fromStage", fields: [fromStageId], references: [id])
+  toStage   FunnelStage @relation("toStage", fields: [toStageId], references: [id])
+  createdBy User        @relation("createdBy", fields: [createdById], references: [id])
+
+  @@index([leadId])
+  @@map("lead_events")
+}
+
+model ContentCalendarEntry {
+  id            String          @id @default(cuid())
+  title         String
+  description   String?
+  channelId     String?         @map("channel_id")
+  category      ContentCategory
+  assigneeId    String?         @map("assignee_id")
+  status        ContentStatus   @default(PLANNED)
+  scheduledDate DateTime        @db.Date @map("scheduled_date")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  channel  Channel? @relation(fields: [channelId], references: [id])
+  assignee User?    @relation("assignee", fields: [assigneeId], references: [id])
+
+  @@index([scheduledDate])
+  @@index([channelId])
+  @@map("content_calendar_entries")
+}
+
+model Alert {
+  id         String    @id @default(cuid())
+  type       AlertType
+  channelId  String?   @map("channel_id")
+  campaignId String?   @map("campaign_id")
+  message    String
+  data       Json?
+  isRead     Boolean   @default(false) @map("is_read")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  channel  Channel?  @relation("channelAlerts", fields: [channelId], references: [id])
+  campaign Campaign? @relation("campaignAlerts", fields: [campaignId], references: [id])
+
+  @@index([isRead])
+  @@map("alerts")
+}
+
+model Report {
+  id            String     @id @default(cuid())
+  type          ReportType
+  periodStart   DateTime   @db.Date @map("period_start")
+  periodEnd     DateTime   @db.Date @map("period_end")
+  generatedById String     @map("generated_by_id")
+  fileUrl       String?    @map("file_url")
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  generatedBy User @relation("generatedBy", fields: [generatedById], references: [id])
+
+  @@map("reports")
+}
+
+model CadenceGoal {
+  id           String          @id @default(cuid())
+  platform     ChannelPlatform
+  postsPerWeek Int             @map("posts_per_week")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  @@unique([platform])
+  @@map("cadence_goals")
+}
+
+model AlertThreshold {
+  id             String   @id @default(cuid())
+  metricName     String   @map("metric_name")
+  dropPercentage Int      @map("drop_percentage")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([metricName])
+  @@map("alert_thresholds")
+}
