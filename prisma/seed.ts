@@ -3,8 +3,21 @@ import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcryptjs';
 
+// Extract direct postgres URL from prisma+postgres proxy URL
+function getDirectDbUrl(): string {
+  const url = process.env.DATABASE_URL!;
+  if (url.startsWith('prisma+postgres://')) {
+    const apiKey = url.split('api_key=')[1];
+    if (apiKey) {
+      const decoded = JSON.parse(Buffer.from(apiKey, 'base64').toString());
+      return decoded.databaseUrl;
+    }
+  }
+  return url;
+}
+
 const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+  adapter: new PrismaPg({ connectionString: getDirectDbUrl() }),
 });
 
 async function main() {
