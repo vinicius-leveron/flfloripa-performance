@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { IS_DEMO } from '@/lib/demo-data';
 import { handleApiError, AppError } from '@/lib/api-error';
 
 const registerSchema = z.object({
@@ -13,12 +12,6 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const data = registerSchema.parse(body);
-
-    if (IS_DEMO) {
-      return NextResponse.json({
-        data: { id: 'user-new', name: data.name, email: data.email, role: 'ADMIN', createdAt: new Date().toISOString() },
-      }, { status: 201 });
-    }
 
     const { prisma } = await import('@/lib/prisma');
     const bcrypt = await import('bcryptjs');

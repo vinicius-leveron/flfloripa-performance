@@ -315,6 +315,84 @@ async function main() {
   }
 
   console.log('✓ Cadence goals + alert thresholds created');
+
+  // ============================
+  // 9. Campaigns + Campaign Metrics
+  // ============================
+  const existingCampaigns = await prisma.campaign.count();
+  if (existingCampaigns === 0) {
+    const campaignsData = [
+      { id: 'camp-1', metaCampaignId: 'meta-vsl-marco-2026', channelId: 'ch-ig', name: 'VSL Marco 2026', status: 'ACTIVE' as const, objective: 'CONVERSIONS', budget: 500, daysAgo: 30, daysAhead: 30 },
+      { id: 'camp-2', metaCampaignId: 'meta-carrossel-depoimentos', channelId: 'ch-tt', name: 'Carrossel Depoimentos', status: 'ACTIVE' as const, objective: 'ENGAGEMENT', budget: 200, daysAgo: 14, daysAhead: 16 },
+    ];
+
+    for (const camp of campaignsData) {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - camp.daysAgo);
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + camp.daysAhead);
+
+      await prisma.campaign.create({
+        data: {
+          id: camp.id,
+          metaCampaignId: camp.metaCampaignId,
+          channelId: camp.channelId,
+          name: camp.name,
+          status: camp.status,
+          objective: camp.objective,
+          budget: camp.budget,
+          startDate,
+          endDate,
+        },
+      });
+
+      // Generate daily campaign metrics
+      const metricsData = [];
+      for (let dayOffset = camp.daysAgo; dayOffset >= 0; dayOffset--) {
+        const date = new Date();
+        date.setDate(date.getDate() - dayOffset);
+        date.setHours(0, 0, 0, 0);
+
+        const dailyBudget = camp.budget / (camp.daysAgo + camp.daysAhead);
+        const variance = () => 0.6 + Math.random() * 0.8;
+        const spend = Math.round(dailyBudget * variance() * 100) / 100;
+        const impressions = Math.round((camp.channelId === 'ch-ig' ? 1200 : 2000) * variance());
+        const clicks = Math.round(impressions * (0.03 + Math.random() * 0.03));
+        const conversions = Math.floor(clicks * (0.02 + Math.random() * 0.03));
+
+        metricsData.push({
+          campaignId: camp.id,
+          date,
+          spend,
+          impressions,
+          clicks,
+          cpm: impressions > 0 ? Math.round((spend / impressions) * 1000 * 100) / 100 : 0,
+          cpc: clicks > 0 ? Math.round((spend / clicks) * 100) / 100 : 0,
+          ctr: impressions > 0 ? Math.round((clicks / impressions) * 10000) / 100 : 0,
+          conversions,
+        });
+      }
+
+      await prisma.campaignMetric.createMany({ data: metricsData });
+    }
+
+    console.log('✓ 2 campaigns + daily metrics created');
+  }
+
+  // ============================
+  // 10. Sample Alerts
+  // ============================
+  const existingAlerts = await prisma.alert.count();
+  if (existingAlerts === 0) {
+    await prisma.alert.createMany({
+      data: [
+        { type: 'ENGAGEMENT_DROP', channelId: 'ch-ig', message: 'Engajamento do Instagram caiu 15% esta semana', isRead: false },
+        { type: 'CADENCE_MISS', channelId: 'ch-ig', message: 'Meta de 5 posts/semana no Instagram não atingida (3/5)', isRead: true },
+      ],
+    });
+    console.log('✓ 2 sample alerts created');
+  }
+
   console.log('\n🎉 Seed complete! Login: demo@logosofia.org.br / demo1234');
 }
 

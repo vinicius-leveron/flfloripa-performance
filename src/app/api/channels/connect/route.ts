@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
-import { IS_DEMO } from '@/lib/demo-data';
 import { handleApiError } from '@/lib/api-error';
 
 const connectSchema = z.object({
@@ -24,10 +23,6 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const { platform } = connectSchema.parse(body);
-
-    if (IS_DEMO) {
-      return NextResponse.json({ data: { authUrl: '/settings/channels?demo=true&connected=' + platform.toLowerCase() } });
-    }
 
     const config = OAUTH_CONFIGS[platform];
     const clientId = platform === 'YOUTUBE' ? (process.env.GOOGLE_CLIENT_ID || '') : (process.env[`${platform}_CLIENT_ID`] || '');

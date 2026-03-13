@@ -1,10 +1,8 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import Google from 'next-auth/providers/google';
-import { IS_DEMO, DEMO_USER } from '@/lib/demo-data';
 
 async function getPrisma() {
-  if (IS_DEMO) return null;
   const { prisma } = await import('@/lib/prisma');
   return prisma;
 }
@@ -23,19 +21,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        // Demo mode: accept any credentials
-        if (IS_DEMO) {
-          return {
-            id: DEMO_USER.id,
-            email: DEMO_USER.email,
-            name: DEMO_USER.name,
-            role: DEMO_USER.role,
-            image: DEMO_USER.image,
-          };
-        }
-
         const prisma = await getPrisma();
-        if (!prisma) return null;
 
         const bcrypt = await import('bcryptjs');
 
@@ -65,7 +51,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     async signIn({ account, profile }) {
-      if (IS_DEMO) return true;
       if (account?.provider === 'google') {
         return profile?.email?.endsWith('@logosofia.org.br') ?? false;
       }
@@ -77,16 +62,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id;
       }
 
-      if (IS_DEMO) {
-        token.id = DEMO_USER.id;
-        token.role = DEMO_USER.role;
-        return token;
-      }
-
       // On Google sign-in, upsert user and account in DB
       if (account?.provider === 'google' && profile?.email) {
         const prisma = await getPrisma();
-        if (!prisma) return token;
 
         let dbUser = await prisma.user.findUnique({
           where: { email: profile.email },

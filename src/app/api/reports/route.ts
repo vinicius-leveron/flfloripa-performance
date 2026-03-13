@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
-import { IS_DEMO, DEMO_REPORTS } from '@/lib/demo-data';
 import { handleApiError } from '@/lib/api-error';
 
 const createReportSchema = z.object({
@@ -15,10 +14,6 @@ export async function GET() {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Não autenticado' } }, { status: 401 });
-    }
-
-    if (IS_DEMO) {
-      return NextResponse.json({ data: DEMO_REPORTS });
     }
 
     const { prisma } = await import('@/lib/prisma');
@@ -42,15 +37,6 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const data = createReportSchema.parse(body);
-
-    if (IS_DEMO) {
-      return NextResponse.json({
-        data: {
-          report: { id: 'report-new', type: data.type, periodStart: data.periodStart, periodEnd: data.periodEnd, fileUrl: null, generatedBy: { id: session.user.id, name: session.user.name }, createdAt: new Date().toISOString() },
-          summary: { totalImpressions: 68420, totalEngagement: 3850, totalReach: 45000, newLeads: 11, channelCount: 3 },
-        },
-      }, { status: 201 });
-    }
 
     const { prisma } = await import('@/lib/prisma');
 

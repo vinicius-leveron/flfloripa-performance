@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { IS_DEMO, DEMO_DASHBOARD } from '@/lib/demo-data';
 import { handleApiError } from '@/lib/api-error';
 
 export async function GET(request: Request) {
@@ -8,10 +7,6 @@ export async function GET(request: Request) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Não autenticado' } }, { status: 401 });
-    }
-
-    if (IS_DEMO) {
-      return NextResponse.json({ data: DEMO_DASHBOARD.chartData.byDay });
     }
 
     const { prisma } = await import('@/lib/prisma');

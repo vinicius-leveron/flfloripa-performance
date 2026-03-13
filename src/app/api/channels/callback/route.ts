@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { IS_DEMO } from '@/lib/demo-data';
 import { handleApiError, AppError } from '@/lib/api-error';
 
 interface OAuthState {
@@ -29,10 +28,6 @@ async function exchangeCodeForToken(platform: string, code: string, redirectUri:
 
 export async function GET(request: Request) {
   try {
-    if (IS_DEMO) {
-      return NextResponse.redirect(new URL('/settings/channels?success=true&demo=true', request.url));
-    }
-
     const url = new URL(request.url);
     const code = url.searchParams.get('code');
     const stateParam = url.searchParams.get('state');

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
-import { IS_DEMO, DEMO_LEADS } from '@/lib/demo-data';
 import { handleApiError } from '@/lib/api-error';
 
 const createLeadSchema = z.object({
@@ -28,16 +27,6 @@ export async function GET(request: Request) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Não autenticado' } }, { status: 401 });
-    }
-
-    if (IS_DEMO) {
-      const url = new URL(request.url);
-      const stageId = url.searchParams.get('stageId');
-      const search = url.searchParams.get('search')?.toLowerCase();
-      let filtered = DEMO_LEADS;
-      if (stageId) filtered = filtered.filter(l => l.currentStage.id === stageId);
-      if (search) filtered = filtered.filter(l => l.name.toLowerCase().includes(search));
-      return NextResponse.json({ data: filtered, meta: { total: filtered.length, page: 1, limit: 20, totalPages: 1 } });
     }
 
     const { prisma } = await import('@/lib/prisma');
@@ -93,12 +82,6 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const data = createLeadSchema.parse(body);
-
-    if (IS_DEMO) {
-      return NextResponse.json({
-        data: { id: 'lead-new', ...data, currentStage: { id: data.currentStageId, name: 'Impactado', position: 1 }, registeredBy: { id: session.user.id, name: session.user.name }, createdAt: new Date().toISOString() },
-      }, { status: 201 });
-    }
 
     const { prisma } = await import('@/lib/prisma');
 

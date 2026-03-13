@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
-import { IS_DEMO, DEMO_STAGES } from '@/lib/demo-data';
 import { handleApiError, AppError } from '@/lib/api-error';
 
 const moveSchema = z.object({
@@ -22,11 +21,6 @@ export async function POST(
     const { id } = await params;
     const body = await request.json();
     const data = moveSchema.parse(body);
-
-    if (IS_DEMO) {
-      const stage = DEMO_STAGES.find(s => s.id === data.toStageId) || DEMO_STAGES[0];
-      return NextResponse.json({ data: { id, currentStage: { id: stage.id, name: stage.name, position: stage.position } } });
-    }
 
     const { prisma } = await import('@/lib/prisma');
 

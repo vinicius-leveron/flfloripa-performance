@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { IS_DEMO } from '@/lib/demo-data';
 import { handleApiError, AppError } from '@/lib/api-error';
 
 export async function DELETE(
@@ -11,10 +10,6 @@ export async function DELETE(
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Não autenticado' } }, { status: 401 });
-    }
-
-    if (IS_DEMO) {
-      return NextResponse.json({ data: { message: 'Canal desconectado' } });
     }
 
     const { prisma } = await import('@/lib/prisma');

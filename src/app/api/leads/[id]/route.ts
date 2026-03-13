@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
-import { IS_DEMO, DEMO_LEADS } from '@/lib/demo-data';
 import { handleApiError, AppError } from '@/lib/api-error';
 
 const updateLeadSchema = z.object({
@@ -35,11 +34,6 @@ export async function PUT(
     const body = await request.json();
     const data = updateLeadSchema.parse(body);
 
-    if (IS_DEMO) {
-      const lead = DEMO_LEADS.find(l => l.id === id);
-      return NextResponse.json({ data: { ...(lead || {}), ...data } });
-    }
-
     const { prisma } = await import('@/lib/prisma');
 
     const existing = await prisma.lead.findFirst({ where: { id, isDeleted: false } });
@@ -71,10 +65,6 @@ export async function DELETE(
     }
 
     const { id } = await params;
-
-    if (IS_DEMO) {
-      return NextResponse.json({ data: { message: 'Lead removido' } });
-    }
 
     const { prisma } = await import('@/lib/prisma');
     await prisma.lead.update({ where: { id }, data: { isDeleted: true } });

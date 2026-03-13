@@ -1,13 +1,8 @@
 import { NextResponse } from 'next/server';
-import { IS_DEMO } from '@/lib/demo-data';
 import { handleApiError } from '@/lib/api-error';
 
 export async function POST(request: Request) {
   try {
-    if (IS_DEMO) {
-      return NextResponse.json({ data: { synced: 3, errors: 0, results: [] } });
-    }
-
     const authHeader = request.headers.get('authorization');
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Invalid cron secret' } }, { status: 401 });

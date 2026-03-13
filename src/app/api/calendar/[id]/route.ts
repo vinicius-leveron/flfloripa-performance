@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
-import { IS_DEMO, DEMO_CALENDAR } from '@/lib/demo-data';
 import { handleApiError, AppError } from '@/lib/api-error';
 
 const contentThemeValues = ['ENSINAMENTO', 'CONVITE', 'EXPERIENCIA', 'REFORCO_CONVITE', 'DICA_LEITURA', 'PODCAST', 'DIVULGACAO', 'OUTRO'] as const;
@@ -33,11 +32,6 @@ export async function PUT(
     const body = await request.json();
     const data = updateEntrySchema.parse(body);
 
-    if (IS_DEMO) {
-      const entry = DEMO_CALENDAR.find(e => e.id === id);
-      return NextResponse.json({ data: { ...(entry || {}), ...data } });
-    }
-
     const { prisma } = await import('@/lib/prisma');
     const existing = await prisma.contentCalendarEntry.findUnique({ where: { id } });
     if (!existing) throw new AppError('NOT_FOUND', 'Entrada não encontrada', 404);
@@ -61,10 +55,6 @@ export async function DELETE(
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Não autenticado' } }, { status: 401 });
-    }
-
-    if (IS_DEMO) {
-      return NextResponse.json({ data: { message: 'Entrada removida' } });
     }
 
     const { prisma } = await import('@/lib/prisma');

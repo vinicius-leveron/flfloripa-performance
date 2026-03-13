@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { IS_DEMO } from '@/lib/demo-data';
 import { handleApiError, AppError } from '@/lib/api-error';
 
 export async function POST(
@@ -14,10 +13,6 @@ export async function POST(
     }
 
     const { id } = await params;
-
-    if (IS_DEMO) {
-      return NextResponse.json({ data: { message: 'Sincronização iniciada', channelId: id } });
-    }
 
     const { prisma } = await import('@/lib/prisma');
 

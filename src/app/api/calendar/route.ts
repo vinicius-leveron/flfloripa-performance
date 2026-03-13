@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
-import { IS_DEMO, DEMO_CALENDAR } from '@/lib/demo-data';
 import { handleApiError } from '@/lib/api-error';
 
 const contentThemeValues = ['ENSINAMENTO', 'CONVITE', 'EXPERIENCIA', 'REFORCO_CONVITE', 'DICA_LEITURA', 'PODCAST', 'DIVULGACAO', 'OUTRO'] as const;
@@ -23,10 +22,6 @@ export async function GET(request: Request) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Não autenticado' } }, { status: 401 });
-    }
-
-    if (IS_DEMO) {
-      return NextResponse.json({ data: DEMO_CALENDAR });
     }
 
     const { prisma } = await import('@/lib/prisma');
@@ -68,12 +63,6 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const data = createEntrySchema.parse(body);
-
-    if (IS_DEMO) {
-      return NextResponse.json({
-        data: { id: 'cal-new', ...data, channel: null, assignee: null, status: 'PLANNED', createdAt: new Date().toISOString() },
-      }, { status: 201 });
-    }
 
     const { prisma } = await import('@/lib/prisma');
     const entry = await prisma.contentCalendarEntry.create({
