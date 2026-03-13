@@ -14,6 +14,16 @@ export async function POST(request: Request) {
 
     for (const channel of channels) {
       try {
+        if (!channel.accessToken) {
+          results.push({ channelId: channel.id, platform: channel.platform, status: 'skipped', error: 'No access token' });
+          continue;
+        }
+
+        // TODO: Implementar fetch real de métricas por plataforma:
+        // - Instagram: GET /v21.0/{ig-user-id}/insights
+        // - TikTok: GET /v2/research/user/info
+        // - YouTube: YouTube Analytics & Data API
+        // Por enquanto apenas atualiza timestamp
         await prisma.channel.update({ where: { id: channel.id }, data: { lastSyncAt: new Date() } });
         results.push({ channelId: channel.id, platform: channel.platform, status: 'success' });
       } catch (err) {

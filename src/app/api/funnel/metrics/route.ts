@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
     // Count leads per stage
     const stageCounts = await Promise.all(
-      stages.map(async (stage) => {
+      stages.map(async (stage: typeof stages[number]) => {
         const count = await prisma.lead.count({
           where: { ...leadWhere, currentStageId: stage.id },
         });
@@ -41,11 +41,11 @@ export async function GET(request: Request) {
       })
     );
 
-    const stageCountMap = Object.fromEntries(stageCounts.map(sc => [sc.stageId, sc.count]));
+    const stageCountMap = Object.fromEntries(stageCounts.map((sc: { stageId: string; count: number }) => [sc.stageId, sc.count]));
 
     // Total leads and ingressos
     const totalLeads = await prisma.lead.count({ where: leadWhere });
-    const ingressoStage = stages.find(s => s.position === 7);
+    const ingressoStage = stages.find((s: typeof stages[number]) => s.position === 7);
     const totalIngressos = ingressoStage ? (stageCountMap[ingressoStage.id] || 0) : 0;
 
     // Ad spend totals
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
     const totalAdSpend = adSpendResult._sum.adSpend || 0;
 
     // Inscrito atividade count (position 3+)
-    const inscritoStage = stages.find(s => s.position === 3);
+    const inscritoStage = stages.find((s: typeof stages[number]) => s.position === 3);
     const inscritosCount = inscritoStage ? (stageCountMap[inscritoStage.id] || 0) : 0;
 
     // Cost per lead = total ad spend / inscritos atividade
@@ -64,14 +64,14 @@ export async function GET(request: Request) {
     const costPerIngresso = totalIngressos > 0 ? totalAdSpend / totalIngressos : 0;
 
     // Overall conversion rate (impactado → ingressou)
-    const impactadoStage = stages.find(s => s.position === 1);
+    const impactadoStage = stages.find((s: typeof stages[number]) => s.position === 1);
     const impactadoCount = impactadoStage ? (stageCountMap[impactadoStage.id] || 0) : 0;
     const overallConversionRate = impactadoCount > 0
       ? Math.round((totalIngressos / impactadoCount) * 10000) / 100
       : 0;
 
     // Stages with conversion rates
-    const stagesWithMetrics = stages.map((stage, index) => {
+    const stagesWithMetrics = stages.map((stage: typeof stages[number], index: number) => {
       const count = stageCountMap[stage.id] || 0;
       const prevCount = index > 0 ? (stageCountMap[stages[index - 1].id] || 0) : 0;
       const conversionRate = index > 0 && prevCount > 0
@@ -98,7 +98,7 @@ export async function GET(request: Request) {
     });
 
     const channelBreakdown = await Promise.all(
-      channelBreakdownRaw.map(async (ch) => {
+      channelBreakdownRaw.map(async (ch: typeof channelBreakdownRaw[number]) => {
         const ingressosForChannel = ingressoStage
           ? await prisma.lead.count({
               where: { ...leadWhere, channelOrigin: ch.channelOrigin, currentStageId: ingressoStage.id },

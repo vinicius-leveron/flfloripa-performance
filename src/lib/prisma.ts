@@ -1,3 +1,4 @@
+// @ts-expect-error — Generated client may not exist before prisma generate
 import { PrismaClient } from '../generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 

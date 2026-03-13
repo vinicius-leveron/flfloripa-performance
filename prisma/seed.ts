@@ -22,16 +22,16 @@ const prisma = new PrismaClient({
 
 async function main() {
   // ============================
-  // 1. Demo User
+  // 1. Initial Admin User
   // ============================
   const passwordHash = await bcrypt.hash('demo1234', 12);
-  const demoUser = await prisma.user.upsert({
+  const adminUser = await prisma.user.upsert({
     where: { email: 'demo@logosofia.org.br' },
-    update: { name: 'Vinícius Demo', role: 'ADMIN', passwordHash },
+    update: { name: 'Vinícius', role: 'ADMIN', passwordHash },
     create: {
       id: 'user-demo',
       email: 'demo@logosofia.org.br',
-      name: 'Vinícius Demo',
+      name: 'Vinícius',
       passwordHash,
       role: 'ADMIN',
     },
@@ -48,7 +48,7 @@ async function main() {
     },
   });
 
-  console.log('✓ Demo users created (demo@logosofia.org.br / demo1234)');
+  console.log('✓ Users created (admin: demo@logosofia.org.br / demo1234)');
 
   // ============================
   // 2. Funnel Stages (7 ingresso stages)
@@ -90,13 +90,13 @@ async function main() {
         platform: ch.platform,
         accountName: ch.accountName,
         accountId: ch.accountId,
-        accessToken: 'demo-token',
-        status: 'CONNECTED',
-        userId: demoUser.id,
+        accessToken: '',
+        status: 'DISCONNECTED',
+        userId: adminUser.id,
       },
     });
   }
-  console.log('✓ 3 channels created');
+  console.log('✓ 3 channels created (DISCONNECTED — connect via OAuth)');
 
   // ============================
   // 4. Metrics (last 30 days per channel)
@@ -138,7 +138,7 @@ async function main() {
   }
 
   // ============================
-  // 5. Mock Leads across all stages
+  // 5. Sample Leads across all stages
   // ============================
   const existingLeads = await prisma.lead.count();
   if (existingLeads === 0) {
@@ -193,7 +193,7 @@ async function main() {
           phone: lead.phone || null,
           channelOrigin: lead.channel,
           currentStageId: `stage-${lead.stage}`,
-          registeredById: demoUser.id,
+          registeredById: adminUser.id,
           lifeMoment: lead.lifeMoment || null,
           inquiry: lead.inquiry || null,
           source: lead.utm?.campaign || null,
@@ -226,7 +226,7 @@ async function main() {
             leadId: lead.id,
             fromStageId: `stage-${i + 1}`,
             toStageId: `stage-${i + 2}`,
-            createdById: i % 2 === 0 ? demoUser.id : editorUser.id,
+            createdById: i % 2 === 0 ? adminUser.id : editorUser.id,
             createdAt: eventDate,
             notes: i === stagePos - 1 ? 'Avançou após acompanhamento' : null,
           },
@@ -270,7 +270,7 @@ async function main() {
           category: entry.category,
           contentTheme: entry.contentTheme,
           contentFormat: entry.contentFormat,
-          assigneeId: entry.daysOffset % 3 === 0 ? editorUser.id : demoUser.id,
+          assigneeId: entry.daysOffset % 3 === 0 ? editorUser.id : adminUser.id,
           status: entry.daysOffset <= 0 ? 'PUBLISHED' : entry.daysOffset <= 2 ? 'CREATED' : 'PLANNED',
           scheduledDate,
         },
@@ -393,7 +393,7 @@ async function main() {
     console.log('✓ 2 sample alerts created');
   }
 
-  console.log('\n🎉 Seed complete! Login: demo@logosofia.org.br / demo1234');
+  console.log('\n✓ Seed complete! Login: demo@logosofia.org.br / demo1234');
 }
 
 main()

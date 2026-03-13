@@ -19,7 +19,8 @@ export async function GET() {
     const adSpendResult = await prisma.lead.aggregate({ where: { isDeleted: false }, _sum: { adSpend: true } });
     const totalAdSpend = adSpendResult._sum.adSpend || 0;
 
-    const stagesWithRates = stages.map((stage, index) => ({
+    type StageWithCount = typeof stages[number];
+    const stagesWithRates = stages.map((stage: StageWithCount, index: number) => ({
       id: stage.id, name: stage.name, position: stage.position, description: stage.description, source: stage.source,
       leadCount: stage._count.leads,
       conversionRate: index > 0 && stages[index - 1]._count.leads > 0
@@ -27,10 +28,10 @@ export async function GET() {
         : index === 0 ? 100 : 0,
     }));
 
-    const totalLeads = stages.reduce((sum, s) => sum + s._count.leads, 0);
-    const ingressoStage = stages.find(s => s.position === 7);
+    const totalLeads = stages.reduce((sum: number, s: StageWithCount) => sum + s._count.leads, 0);
+    const ingressoStage = stages.find((s: StageWithCount) => s.position === 7);
     const totalIngressos = ingressoStage?._count.leads || 0;
-    const impactadoStage = stages.find(s => s.position === 1);
+    const impactadoStage = stages.find((s: StageWithCount) => s.position === 1);
     const overallConversionRate = impactadoStage && impactadoStage._count.leads > 0
       ? Math.round((totalIngressos / impactadoStage._count.leads) * 10000) / 100 : 0;
 

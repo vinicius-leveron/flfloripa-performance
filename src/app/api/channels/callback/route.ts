@@ -2,18 +2,23 @@ import { NextResponse } from 'next/server';
 import { handleApiError, AppError } from '@/lib/api-error';
 
 interface OAuthState {
-  platform: 'INSTAGRAM' | 'TIKTOK' | 'LINKEDIN';
+  platform: 'INSTAGRAM' | 'TIKTOK' | 'LINKEDIN' | 'YOUTUBE';
   userId: string;
 }
 
 async function exchangeCodeForToken(platform: string, code: string, redirectUri: string) {
-  const clientId = process.env[`${platform}_CLIENT_ID`] || '';
-  const clientSecret = process.env[`${platform}_CLIENT_SECRET`] || '';
+  const clientId = platform === 'YOUTUBE'
+    ? (process.env.GOOGLE_CLIENT_ID || '')
+    : (process.env[`${platform}_CLIENT_ID`] || process.env[`${platform}_CLIENT_KEY`] || '');
+  const clientSecret = platform === 'YOUTUBE'
+    ? (process.env.GOOGLE_CLIENT_SECRET || '')
+    : (process.env[`${platform}_CLIENT_SECRET`] || '');
 
   const tokenUrls: Record<string, string> = {
     INSTAGRAM: 'https://graph.facebook.com/v21.0/oauth/access_token',
     TIKTOK: 'https://open.tiktokapis.com/v2/oauth/token/',
     LINKEDIN: 'https://www.linkedin.com/oauth/v2/accessToken',
+    YOUTUBE: 'https://oauth2.googleapis.com/token',
   };
 
   const response = await fetch(tokenUrls[platform], {

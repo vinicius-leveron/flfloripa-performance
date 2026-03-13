@@ -54,15 +54,16 @@ export async function POST(request: Request) {
       include: { generatedBy: { select: { id: true, name: true } } },
     });
 
+    type MetricRow = typeof metrics[number];
     return NextResponse.json({
       data: {
         report,
         summary: {
-          totalImpressions: metrics.reduce((sum, m) => sum + m.impressions, 0),
-          totalEngagement: metrics.reduce((sum, m) => sum + m.engagement, 0),
-          totalReach: metrics.reduce((sum, m) => sum + m.reach, 0),
+          totalImpressions: metrics.reduce((sum: number, m: MetricRow) => sum + m.impressions, 0),
+          totalEngagement: metrics.reduce((sum: number, m: MetricRow) => sum + m.engagement, 0),
+          totalReach: metrics.reduce((sum: number, m: MetricRow) => sum + m.reach, 0),
           newLeads: leads,
-          channelCount: new Set(metrics.map(m => m.channelId)).size,
+          channelCount: new Set(metrics.map((m: MetricRow) => m.channelId)).size,
         },
       },
     }, { status: 201 });

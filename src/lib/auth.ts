@@ -9,10 +9,12 @@ async function getPrisma() {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID || 'demo',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'demo',
-    }),
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [Google({
+          clientId: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        })]
+      : []),
     Credentials({
       credentials: {
         email: { label: 'Email', type: 'email' },
@@ -131,5 +133,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     strategy: 'jwt',
     maxAge: 24 * 60 * 60, // 24 hours
   },
-  secret: process.env.NEXTAUTH_SECRET || 'demo-secret-not-for-production-use',
+  secret: process.env.NEXTAUTH_SECRET,
 });

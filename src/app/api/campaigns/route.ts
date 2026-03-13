@@ -16,11 +16,11 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     });
 
-    const campaignsWithSummary = campaigns.map((c) => {
-      const totalSpend = c.metrics.reduce((sum, m) => sum + m.spend, 0);
-      const totalImpressions = c.metrics.reduce((sum, m) => sum + m.impressions, 0);
-      const totalClicks = c.metrics.reduce((sum, m) => sum + m.clicks, 0);
-      const totalConversions = c.metrics.reduce((sum, m) => sum + m.conversions, 0);
+    const campaignsWithSummary = campaigns.map((c: typeof campaigns[number]) => {
+      const totalSpend = c.metrics.reduce((sum: number, m: typeof c.metrics[number]) => sum + m.spend, 0);
+      const totalImpressions = c.metrics.reduce((sum: number, m: typeof c.metrics[number]) => sum + m.impressions, 0);
+      const totalClicks = c.metrics.reduce((sum: number, m: typeof c.metrics[number]) => sum + m.clicks, 0);
+      const totalConversions = c.metrics.reduce((sum: number, m: typeof c.metrics[number]) => sum + m.conversions, 0);
       return {
         id: c.id, name: c.name, status: c.status, objective: c.objective, budget: c.budget, startDate: c.startDate, endDate: c.endDate, channel: c.channel,
         summary: {
