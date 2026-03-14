@@ -1,11 +1,7 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import Google from 'next-auth/providers/google';
-
-async function getPrisma() {
-  const { prisma } = await import('@/lib/prisma');
-  return prisma;
-}
+import { getSupabase } from '@/lib/supabase';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -23,18 +19,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const prisma = await getPrisma();
-
+        const supabase = getSupabase();
         const bcrypt = await import('bcryptjs');
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
-        });
-        if (!user || !user.passwordHash) return null;
+        const { data: user, error } = await supabase
+          .from('users')
+          .select('id, email, name, password_hash, role, image')
+          .eq('email', credentials.email as string)
+          .single();
+
+        if (error || !user || !user.password_hash) return null;
 
         const isValid = await bcrypt.compare(
           credentials.password as string,
-          user.passwordHash
+          user.password_hash
         );
         if (!isValid) return null;
 
@@ -66,57 +64,84 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       // On Google sign-in, upsert user and account in DB
       if (account?.provider === 'google' && profile?.email) {
-        const prisma = await getPrisma();
+        const supabase = getSupabase();
+        const now = new Date().toISOString();
 
-        let dbUser = await prisma.user.findUnique({
-          where: { email: profile.email },
-        });
+        // Try to find existing user
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('id, role, image')
+          .eq('email', profile.email)
+          .single();
+
+        let dbUser: { id: string; role: string; image: string | null } | null = existingUser;
 
         if (!dbUser) {
-          dbUser = await prisma.user.create({
-            data: {
+          // Create new user
+          const { data: newUser } = await supabase
+            .from('users')
+            .insert({
+              id: crypto.randomUUID(),
               email: profile.email,
               name: profile.name || profile.email.split('@')[0],
               image: (profile as { picture?: string }).picture || null,
               role: 'VIEWER',
-            },
-          });
+              created_at: now,
+              updated_at: now,
+            })
+            .select('id, role, image')
+            .single();
+          dbUser = newUser;
         } else if (!dbUser.image && (profile as { picture?: string }).picture) {
-          dbUser = await prisma.user.update({
-            where: { id: dbUser.id },
-            data: { image: (profile as { picture?: string }).picture },
-          });
+          // Update user image
+          await supabase
+            .from('users')
+            .update({
+              image: (profile as { picture?: string }).picture,
+              updated_at: now,
+            })
+            .eq('id', dbUser.id);
         }
 
-        // Upsert OAuth account link
-        await prisma.account.upsert({
-          where: {
-            provider_providerAccountId: {
-              provider: account.provider,
-              providerAccountId: account.providerAccountId,
-            },
-          },
-          update: {
-            access_token: account.access_token,
-            refresh_token: account.refresh_token,
-            expires_at: account.expires_at,
-          },
-          create: {
-            userId: dbUser.id,
-            type: account.type,
-            provider: account.provider,
-            providerAccountId: account.providerAccountId,
-            access_token: account.access_token,
-            refresh_token: account.refresh_token,
-            expires_at: account.expires_at,
-            token_type: account.token_type,
-            scope: account.scope,
-            id_token: account.id_token,
-          },
-        });
+        if (dbUser) {
+          // Upsert OAuth account link
+          const { data: existingAccount } = await supabase
+            .from('accounts')
+            .select('id')
+            .eq('provider', account.provider)
+            .eq('provider_account_id', account.providerAccountId)
+            .single();
 
-        token.id = dbUser.id;
-        token.role = dbUser.role;
+          if (existingAccount) {
+            await supabase
+              .from('accounts')
+              .update({
+                access_token: account.access_token,
+                refresh_token: account.refresh_token,
+                expires_at: account.expires_at,
+              })
+              .eq('id', existingAccount.id);
+          } else {
+            await supabase
+              .from('accounts')
+              .insert({
+                id: crypto.randomUUID(),
+                user_id: dbUser.id,
+                type: account.type,
+                provider: account.provider,
+                provider_account_id: account.providerAccountId,
+                access_token: account.access_token,
+                refresh_token: account.refresh_token,
+                expires_at: account.expires_at,
+                token_type: account.token_type,
+                scope: account.scope,
+                id_token: account.id_token,
+              });
+          }
+
+          token.id = dbUser.id;
+          token.role = dbUser.role;
+        }
       }
 
       return token;
