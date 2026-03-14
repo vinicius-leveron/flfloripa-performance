@@ -3,8 +3,12 @@ import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcryptjs';
 
-// Extract direct postgres URL from prisma+postgres proxy URL
+// Use DIRECT_URL for direct database operations (bypass pooler)
 function getDirectDbUrl(): string {
+  // Prefer DIRECT_URL for seeding (bypasses Supabase pooler)
+  if (process.env.DIRECT_URL) {
+    return process.env.DIRECT_URL;
+  }
   const url = process.env.DATABASE_URL!;
   if (url.startsWith('prisma+postgres://')) {
     const apiKey = url.split('api_key=')[1];
