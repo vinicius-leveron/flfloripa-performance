@@ -45,14 +45,18 @@ export async function POST(request: Request) {
     const role = (count ?? 0) === 0 ? 'ADMIN' : 'VIEWER';
     const passwordHash = await bcrypt.hash(data.password, 12);
 
-    // Create user
+    // Create user (generate ID and timestamps since Supabase doesn't have Prisma defaults)
+    const now = new Date().toISOString();
     const { data: user, error } = await supabase
       .from('users')
       .insert({
+        id: crypto.randomUUID(),
         name: data.name,
         email: data.email,
         password_hash: passwordHash,
         role,
+        created_at: now,
+        updated_at: now,
       })
       .select('id, name, email, role, created_at')
       .single();
