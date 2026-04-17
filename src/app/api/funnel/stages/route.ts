@@ -29,11 +29,11 @@ export async function GET() {
     }));
 
     const totalLeads = stages.reduce((sum: number, s: StageWithCount) => sum + s._count.leads, 0);
-    const ingressoStage = stages.find((s: StageWithCount) => s.position === 7);
+    const ingressoStage = stages.find((s: StageWithCount) => s.position === 6);
     const totalIngressos = ingressoStage?._count.leads || 0;
-    const impactadoStage = stages.find((s: StageWithCount) => s.position === 1);
-    const overallConversionRate = impactadoStage && impactadoStage._count.leads > 0
-      ? Math.round((totalIngressos / impactadoStage._count.leads) * 10000) / 100 : 0;
+    const leadStage = stages.find((s: StageWithCount) => s.position === 1);
+    const overallConversionRate = leadStage && leadStage._count.leads > 0
+      ? Math.round((totalIngressos / leadStage._count.leads) * 10000) / 100 : 0;
 
     return NextResponse.json({
       data: stagesWithRates,
