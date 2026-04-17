@@ -16,6 +16,7 @@ import {
   ChevronRight,
   LogOut,
   Menu,
+  Video,
 } from 'lucide-react';
 import { useState } from 'react';
 import { signOut } from 'next-auth/react';
@@ -31,6 +32,7 @@ const mainNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/funnel', label: 'Funil', icon: Filter },
   { href: '/leads', label: 'Leads', icon: Users },
+  { href: '/webinars', label: 'Webinars', icon: Video },
   { href: '/calendar', label: 'Calendário', icon: Calendar },
   { href: '/campaigns', label: 'Campanhas', icon: Megaphone },
 ];

@@ -55,16 +55,16 @@ async function main() {
   console.log('✓ Users created (admin: demo@logosofia.org.br / demo1234)');
 
   // ============================
-  // 2. Funnel Stages (7 ingresso stages)
+  // 2. Funnel Stages (7 ingresso stages) — Novo funil webinar
   // ============================
   const stages = [
-    { name: 'Impactado', position: 1, description: 'Viu o criativo/anúncio nas redes sociais', source: 'AUTO' as const },
-    { name: 'Visitou VSL', position: 2, description: 'Clicou e assistiu a VSL na landing page', source: 'AUTO' as const },
-    { name: 'Inscrito Atividade', position: 3, description: 'Preencheu formulário para atividade online', source: 'MANUAL' as const },
-    { name: 'Participou Online', position: 4, description: 'Compareceu à atividade online ao vivo', source: 'MANUAL' as const },
-    { name: 'Participou Presencial', position: 5, description: 'Veio à atividade presencial na sede', source: 'MANUAL' as const },
-    { name: 'Pedido de Curso', position: 6, description: 'Solicitou ingresso no curso de formação', source: 'MANUAL' as const },
-    { name: 'Ingressou', position: 7, description: 'Efetivou ingresso na Fundação Logosófica', source: 'MANUAL' as const },
+    { name: 'Lead', position: 1, description: 'Se inscreveu no webinar', source: 'AUTO' as const },
+    { name: 'Participou', position: 2, description: 'Assistiu ao webinar (ao vivo ou replay)', source: 'AUTO' as const },
+    { name: 'Visitou Sede', position: 3, description: 'Foi a reunião presencial na sede', source: 'MANUAL' as const },
+    { name: 'Curso de Informação', position: 4, description: 'Participou do curso de informação', source: 'MANUAL' as const },
+    { name: 'Curso de Preparação', position: 5, description: 'Participou do curso de preparação', source: 'MANUAL' as const },
+    { name: 'Ingressou', position: 6, description: 'Membro efetivo da Fundação Logosófica', source: 'MANUAL' as const },
+    { name: 'Desistiu', position: 7, description: 'Desistiu do processo em qualquer etapa', source: 'MANUAL' as const },
   ];
 
   for (const stage of stages) {
@@ -142,51 +142,32 @@ async function main() {
   }
 
   // ============================
-  // 5. Sample Leads across all stages
+  // 5. Sample Leads across all stages — Novo funil webinar
   // ============================
   const existingLeads = await prisma.lead.count();
   if (existingLeads === 0) {
     const leadNames = [
-      // Stage 1 - Impactado (12 leads)
-      { name: 'Ana Carolina', stage: 1, channel: 'Instagram', lifeMoment: 'autoconhecimento', inquiry: 'Sinto que preciso de algo mais profundo', adSpend: 12.50, utm: { source: 'meta', medium: 'cpc', campaign: 'vsl-marco-2026' }, vslWatched: false },
-      { name: 'Bruno Martins', stage: 1, channel: 'TikTok', lifeMoment: 'transicao_carreira', inquiry: 'Mudança de vida', adSpend: 8.30, utm: { source: 'tiktok', medium: 'cpc', campaign: 'carrossel-depoimentos' }, vslWatched: false },
-      { name: 'Camila Ferreira', stage: 1, channel: 'Instagram', adSpend: 11.20, vslWatched: false },
-      { name: 'Diego Souza', stage: 1, channel: 'Instagram', adSpend: 9.80, vslWatched: false },
-      { name: 'Eduarda Lima', stage: 1, channel: 'TikTok', adSpend: 7.60, vslWatched: false },
-      { name: 'Fernando Alves', stage: 1, channel: 'YouTube', adSpend: 15.00, vslWatched: false },
-      { name: 'Gabriela Costa', stage: 1, channel: 'Instagram', adSpend: 10.40, vslWatched: false },
-      { name: 'Hugo Pereira', stage: 1, channel: 'TikTok', adSpend: 6.90, vslWatched: false },
-      { name: 'Isabela Rocha', stage: 1, channel: 'Instagram', adSpend: 13.10, vslWatched: false },
-      { name: 'João Ribeiro', stage: 1, channel: 'YouTube', adSpend: 14.50, vslWatched: false },
-      { name: 'Karen Oliveira', stage: 1, channel: 'Instagram', adSpend: 11.80, vslWatched: false },
-      { name: 'Lucas Cardoso', stage: 1, channel: 'TikTok', adSpend: 7.20, vslWatched: false },
-      // Stage 2 - Visitou VSL (8 leads)
-      { name: 'Mariana Silva', stage: 2, channel: 'Instagram', lifeMoment: 'busca_espiritual', inquiry: 'Procurando propósito na vida', adSpend: 12.00, vslWatched: true, vslWatchTime: 240, utm: { source: 'meta', medium: 'cpc', campaign: 'vsl-marco-2026' } },
-      { name: 'Nicolas Santos', stage: 2, channel: 'TikTok', adSpend: 9.50, vslWatched: true, vslWatchTime: 180 },
-      { name: 'Olivia Nascimento', stage: 2, channel: 'Instagram', adSpend: 11.00, vslWatched: true, vslWatchTime: 320 },
-      { name: 'Pedro Henrique', stage: 2, channel: 'Instagram', adSpend: 13.50, vslWatched: true, vslWatchTime: 150 },
-      { name: 'Rafaela Mendes', stage: 2, channel: 'YouTube', adSpend: 16.00, vslWatched: true, vslWatchTime: 410 },
-      { name: 'Samuel Barbosa', stage: 2, channel: 'TikTok', adSpend: 8.00, vslWatched: true, vslWatchTime: 90 },
-      { name: 'Tatiana Campos', stage: 2, channel: 'Instagram', adSpend: 10.80, vslWatched: true, vslWatchTime: 280 },
-      { name: 'Ulisses Prado', stage: 2, channel: 'Instagram', adSpend: 12.30, vslWatched: true, vslWatchTime: 200 },
-      // Stage 3 - Inscrito Atividade (5 leads)
-      { name: 'Vanessa Duarte', stage: 3, channel: 'Instagram', email: 'vanessa.d@email.com', phone: '(48) 99123-4567', lifeMoment: 'paternidade', inquiry: 'Como educar meus filhos com valores', adSpend: 14.00, vslWatched: true, vslWatchTime: 450, utm: { source: 'meta', medium: 'cpc', campaign: 'vsl-marco-2026' } },
-      { name: 'Wagner Moreira', stage: 3, channel: 'TikTok', email: 'wagner.m@email.com', phone: '(48) 99234-5678', lifeMoment: 'autoconhecimento', adSpend: 9.00, vslWatched: true, vslWatchTime: 360 },
-      { name: 'Ximena Castro', stage: 3, channel: 'Instagram', email: 'ximena.c@email.com', lifeMoment: 'busca_espiritual', adSpend: 11.50, vslWatched: true, vslWatchTime: 300 },
-      { name: 'Yuri Lopes', stage: 3, channel: 'Instagram', email: 'yuri.l@email.com', phone: '(48) 99345-6789', adSpend: 13.20, vslWatched: true, vslWatchTime: 420 },
-      { name: 'Zélia Andrade', stage: 3, channel: 'YouTube', email: 'zelia.a@email.com', lifeMoment: 'crise_pessoal', inquiry: 'Superação de momento difícil', adSpend: 17.00, vslWatched: true, vslWatchTime: 500 },
-      // Stage 4 - Participou Online (3 leads)
-      { name: 'Amanda Teixeira', stage: 4, channel: 'Instagram', email: 'amanda.t@email.com', phone: '(48) 99456-7890', lifeMoment: 'relacionamento', inquiry: 'Melhorar meu relacionamento', adSpend: 12.00, vslWatched: true, vslWatchTime: 480 },
-      { name: 'Bernardo Figueiredo', stage: 4, channel: 'TikTok', email: 'bernardo.f@email.com', phone: '(48) 99567-8901', lifeMoment: 'transicao_carreira', inquiry: 'Quero encontrar minha vocação', adSpend: 10.00, vslWatched: true, vslWatchTime: 400 },
-      { name: 'Clara Monteiro', stage: 4, channel: 'Instagram', email: 'clara.m@email.com', lifeMoment: 'autoconhecimento', adSpend: 14.50, vslWatched: true, vslWatchTime: 520 },
-      // Stage 5 - Participou Presencial (2 leads)
-      { name: 'Daniela Rezende', stage: 5, channel: 'Instagram', email: 'daniela.r@email.com', phone: '(48) 99678-9012', lifeMoment: 'busca_espiritual', inquiry: 'Conhecimento que transforma', adSpend: 13.00, vslWatched: true, vslWatchTime: 480 },
-      { name: 'Emanuel Cruz', stage: 5, channel: 'YouTube', email: 'emanuel.c@email.com', phone: '(48) 99789-0123', lifeMoment: 'paternidade', inquiry: 'Educação dos filhos', adSpend: 18.00, vslWatched: true, vslWatchTime: 550 },
-      // Stage 6 - Pedido de Curso (1 lead)
-      { name: 'Fernanda Araújo', stage: 6, channel: 'Instagram', email: 'fernanda.a@email.com', phone: '(48) 99890-1234', lifeMoment: 'autoconhecimento', inquiry: 'Quero me conhecer profundamente', adSpend: 15.00, vslWatched: true, vslWatchTime: 500 },
-      // Stage 7 - Ingressou (2 leads)
-      { name: 'Gabriel Nogueira', stage: 7, channel: 'Instagram', email: 'gabriel.n@email.com', phone: '(48) 99901-2345', lifeMoment: 'busca_espiritual', inquiry: 'Encontrei o que buscava', adSpend: 12.50, vslWatched: true, vslWatchTime: 480 },
-      { name: 'Helena Vieira', stage: 7, channel: 'TikTok', email: 'helena.v@email.com', phone: '(48) 99012-3456', lifeMoment: 'crise_pessoal', inquiry: 'Transformação pessoal', adSpend: 11.00, vslWatched: true, vslWatchTime: 510 },
+      // Stage 1 - Lead (inscrito no webinar)
+      { name: 'Ana Carolina', stage: 1, channel: 'Instagram', lifeMoment: 'autoconhecimento', inquiry: 'Sinto que preciso de algo mais profundo', utm: { source: 'meta', medium: 'cpc', campaign: 'webinar-abril-2026' } },
+      { name: 'Bruno Martins', stage: 1, channel: 'TikTok', lifeMoment: 'transicao_carreira', inquiry: 'Mudança de vida', utm: { source: 'tiktok', medium: 'organic', campaign: 'webinar-abril-2026' } },
+      { name: 'Camila Ferreira', stage: 1, channel: 'Instagram', utm: { source: 'meta', medium: 'cpc', campaign: 'webinar-abril-2026' } },
+      { name: 'Diego Souza', stage: 1, channel: 'Instagram' },
+      { name: 'Eduarda Lima', stage: 1, channel: 'YouTube' },
+      // Stage 2 - Participou (assistiu ao webinar)
+      { name: 'Fernanda Oliveira', stage: 2, channel: 'Instagram', email: 'fernanda.o@email.com', lifeMoment: 'busca_espiritual', inquiry: 'Procurando propósito na vida', utm: { source: 'meta', medium: 'cpc', campaign: 'webinar-abril-2026' } },
+      { name: 'Gabriel Santos', stage: 2, channel: 'TikTok', email: 'gabriel.s@email.com', phone: '(48) 99123-4567' },
+      { name: 'Helena Costa', stage: 2, channel: 'Instagram', email: 'helena.c@email.com' },
+      // Stage 3 - Visitou Sede (foi à reunião presencial)
+      { name: 'Igor Mendes', stage: 3, channel: 'Instagram', email: 'igor.m@email.com', phone: '(48) 99234-5678', lifeMoment: 'paternidade', inquiry: 'Como educar meus filhos com valores', utm: { source: 'meta', medium: 'cpc', campaign: 'webinar-abril-2026' } },
+      { name: 'Julia Ribeiro', stage: 3, channel: 'YouTube', email: 'julia.r@email.com', phone: '(48) 99345-6789', lifeMoment: 'autoconhecimento' },
+      // Stage 4 - Curso de Informação
+      { name: 'Kevin Almeida', stage: 4, channel: 'Instagram', email: 'kevin.a@email.com', phone: '(48) 99456-7890', lifeMoment: 'busca_espiritual', inquiry: 'Conhecimento que transforma' },
+      // Stage 5 - Curso de Preparação
+      { name: 'Larissa Duarte', stage: 5, channel: 'Instagram', email: 'larissa.d@email.com', phone: '(48) 99567-8901', lifeMoment: 'transicao_carreira' },
+      // Stage 6 - Ingressou
+      { name: 'Marcos Vieira', stage: 6, channel: 'TikTok', email: 'marcos.v@email.com', phone: '(48) 99678-9012', lifeMoment: 'busca_espiritual', inquiry: 'Encontrei o que buscava' },
+      // Stage 7 - Desistiu
+      { name: 'Natália Prado', stage: 7, channel: 'Instagram', email: 'natalia.p@email.com', phone: '(48) 99789-0123', lifeMoment: 'crise_pessoal' },
     ];
 
     for (const lead of leadNames) {
@@ -201,27 +182,25 @@ async function main() {
           lifeMoment: lead.lifeMoment || null,
           inquiry: lead.inquiry || null,
           source: lead.utm?.campaign || null,
-          adSpend: lead.adSpend || null,
           utmSource: lead.utm?.source || null,
           utmMedium: lead.utm?.medium || null,
           utmCampaign: lead.utm?.campaign || null,
-          vslWatched: lead.vslWatched ?? false,
-          vslWatchTime: lead.vslWatchTime || null,
         },
       });
     }
 
-    // Create lead events (stage transitions) for advanced leads
+    // Create lead events (stage transitions) for leads that advanced past stage 2
     const advancedLeads = await prisma.lead.findMany({
-      where: { currentStage: { position: { gte: 4 } }, isDeleted: false },
+      where: { currentStage: { position: { gte: 3 } }, isDeleted: false },
     });
 
     for (const lead of advancedLeads) {
       const stagePos = stages.findIndex(s => `stage-${s.position}` === lead.currentStageId);
       if (stagePos <= 0) continue;
 
+      // Create transition events from stage 1 up to current stage
       for (let i = 0; i < stagePos; i++) {
-        const daysAgo = (stagePos - i) * 7 + Math.floor(Math.random() * 5);
+        const daysAgo = (stagePos - i) * 14 + Math.floor(Math.random() * 7);
         const eventDate = new Date();
         eventDate.setDate(eventDate.getDate() - daysAgo);
 
@@ -232,7 +211,7 @@ async function main() {
             toStageId: `stage-${i + 2}`,
             createdById: i % 2 === 0 ? adminUser.id : editorUser.id,
             createdAt: eventDate,
-            notes: i === stagePos - 1 ? 'Avançou após acompanhamento' : null,
+            notes: i === stagePos - 1 ? 'Avançou após acompanhamento do SIPE' : null,
           },
         });
       }

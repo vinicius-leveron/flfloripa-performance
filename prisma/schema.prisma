@@ -84,6 +84,13 @@ enum ReportType {
   CUSTOM
 }
 
+enum WebinarStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  REPLAY_ONLY
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -94,12 +101,13 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  accounts        Account[]
-  channels        Channel[]
-  calendarEntries ContentCalendarEntry[] @relation("assignee")
-  registeredLeads Lead[]                @relation("registeredBy")
-  leadEvents      LeadEvent[]           @relation("createdBy")
-  reports         Report[]              @relation("generatedBy")
+  accounts         Account[]
+  channels         Channel[]
+  calendarEntries  ContentCalendarEntry[] @relation("assignee")
+  registeredLeads  Lead[]                 @relation("registeredBy")
+  responsibleLeads Lead[]                 @relation("responsibleFor")
+  leadEvents       LeadEvent[]            @relation("createdBy")
+  reports          Report[]               @relation("generatedBy")
 
   @@map("users")
 }
@@ -264,12 +272,21 @@ model Lead {
   vslWatched   Boolean  @default(false) @map("vsl_watched")
   vslWatchTime Int?     @map("vsl_watch_time")
 
-  currentStage FunnelStage @relation(fields: [currentStageId], references: [id])
-  registeredBy User        @relation("registeredBy", fields: [registeredById], references: [id])
-  events       LeadEvent[]
+  // Responsável pelo lead
+  responsibleUserId String? @map("responsible_user_id")
+
+  // Integração Trello SIPE
+  trelloCardId String? @map("trello_card_id")
+
+  currentStage         FunnelStage           @relation(fields: [currentStageId], references: [id])
+  registeredBy         User                  @relation("registeredBy", fields: [registeredById], references: [id])
+  responsibleUser      User?                 @relation("responsibleFor", fields: [responsibleUserId], references: [id])
+  events               LeadEvent[]
+  webinarRegistrations WebinarRegistration[]
 
   @@index([currentStageId])
   @@index([isDeleted])
+  @@index([responsibleUserId])
   @@map("leads")
 }
 
@@ -362,4 +379,44 @@ model AlertThreshold {
 
   @@unique([metricName])
   @@map("alert_thresholds")
+}
+
+model Webinar {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  description String?
+  scheduledAt DateTime      @map("scheduled_at")
+  replayUrl   String?       @map("replay_url")
+  status      WebinarStatus @default(SCHEDULED)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  registrations WebinarRegistration[]
+
+  @@map("webinars")
+}
+
+model WebinarRegistration {
+  id           String   @id @default(cuid())
+  leadId       String   @map("lead_id")
+  webinarId    String   @map("webinar_id")
+  registeredAt DateTime @default(now()) @map("registered_at")
+
+  // Presença simplificada
+  attendedLive  Boolean @default(false) @map("attended_live")
+  watchedReplay Boolean @default(false) @map("watched_replay")
+
+  // UTM da inscrição
+  utmSource   String? @map("utm_source")
+  utmMedium   String? @map("utm_medium")
+  utmCampaign String? @map("utm_campaign")
+
+  lead    Lead    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  webinar Webinar @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+
+  @@unique([leadId, webinarId])
+  @@index([webinarId])
+  @@index([leadId])
+  @@map("webinar_registrations")
 }
