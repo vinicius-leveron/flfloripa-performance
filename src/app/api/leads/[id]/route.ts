@@ -3,6 +3,47 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { handleApiError, AppError } from '@/lib/api-error';
 
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Não autenticado' } }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    const { prisma } = await import('@/lib/prisma');
+
+    const lead = await prisma.lead.findFirst({
+      where: { id, isDeleted: false },
+      include: {
+        funnel: { select: { id: true, name: true, slug: true, color: true } },
+        currentStage: { select: { id: true, name: true, position: true, funnelId: true } },
+        registeredBy: { select: { id: true, name: true } },
+        events: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            fromStage: { select: { name: true } },
+            toStage: { select: { name: true } },
+            createdBy: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    if (!lead) {
+      throw new AppError('NOT_FOUND', 'Lead não encontrado', 404);
+    }
+
+    return NextResponse.json({ data: lead });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
 const updateLeadSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional().or(z.literal('')),
