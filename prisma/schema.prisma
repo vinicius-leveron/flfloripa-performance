@@ -91,6 +91,29 @@ enum WebinarStatus {
   REPLAY_ONLY
 }
 
+// Form Builder enums
+enum FormStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum FieldType {
+  TEXT
+  EMAIL
+  PHONE
+  TEXTAREA
+  SELECT
+  CHECKBOX
+  DATE
+}
+
+enum FormAccessMode {
+  PUBLIC
+  EMBED
+  STAFF
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -108,6 +131,10 @@ model User {
   responsibleLeads Lead[]                 @relation("responsibleFor")
   leadEvents       LeadEvent[]            @relation("createdBy")
   reports          Report[]               @relation("generatedBy")
+
+  // Form Builder relations
+  formsCreated    FormTemplate[]   @relation("formCreator")
+  formSubmissions FormSubmission[] @relation("submissionCreator")
 
   @@map("users")
 }
@@ -228,18 +255,42 @@ model CampaignMetric {
   @@map("campaign_metrics")
 }
 
+model Funnel {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  color       String? // cor para UI (hex)
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  stages FunnelStage[]
+  leads  Lead[]
+
+  @@map("funnels")
+}
+
 model FunnelStage {
   id          String       @id @default(cuid())
+  funnelId    String       @map("funnel_id")
   name        String
   position    Int
   description String?
   source      FunnelSource @default(MANUAL)
+  syncTrello  Boolean      @default(false) @map("sync_trello")
   createdAt   DateTime     @default(now()) @map("created_at")
 
+  funnel     Funnel      @relation(fields: [funnelId], references: [id], onDelete: Cascade)
   leads      Lead[]
   eventsFrom LeadEvent[] @relation("fromStage")
   eventsTo   LeadEvent[] @relation("toStage")
 
+  // Form Builder: formularios que direcionam leads para este estagio
+  formTemplates FormTemplate[]
+
+  @@unique([funnelId, position])
+  @@index([funnelId])
   @@map("funnel_stages")
 }
 
@@ -249,6 +300,7 @@ model Lead {
   email          String?
   phone          String?
   channelOrigin  String?  @map("channel_origin")
+  funnelId       String   @map("funnel_id")
   currentStageId String   @map("current_stage_id")
   registeredById String   @map("registered_by_id")
   notes          String?
@@ -257,20 +309,20 @@ model Lead {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   // Perfil / Avatar do lead
-  lifeMoment   String?  @map("life_moment")
-  inquiry      String?
-  source       String?
+  lifeMoment String? @map("life_moment")
+  inquiry    String?
+  source     String?
 
   // Tracking de origem
-  campaignId   String?  @map("campaign_id")
-  adSpend      Float?   @map("ad_spend")
-  utmSource    String?  @map("utm_source")
-  utmMedium    String?  @map("utm_medium")
-  utmCampaign  String?  @map("utm_campaign")
+  campaignId  String? @map("campaign_id")
+  adSpend     Float?  @map("ad_spend")
+  utmSource   String? @map("utm_source")
+  utmMedium   String? @map("utm_medium")
+  utmCampaign String? @map("utm_campaign")
 
   // VSL tracking
-  vslWatched   Boolean  @default(false) @map("vsl_watched")
-  vslWatchTime Int?     @map("vsl_watch_time")
+  vslWatched   Boolean @default(false) @map("vsl_watched")
+  vslWatchTime Int?    @map("vsl_watch_time")
 
   // Responsável pelo lead
   responsibleUserId String? @map("responsible_user_id")
@@ -278,12 +330,15 @@ model Lead {
   // Integração Trello SIPE
   trelloCardId String? @map("trello_card_id")
 
+  funnel               Funnel                @relation(fields: [funnelId], references: [id])
   currentStage         FunnelStage           @relation(fields: [currentStageId], references: [id])
   registeredBy         User                  @relation("registeredBy", fields: [registeredById], references: [id])
   responsibleUser      User?                 @relation("responsibleFor", fields: [responsibleUserId], references: [id])
   events               LeadEvent[]
   webinarRegistrations WebinarRegistration[]
+  formSubmissions      FormSubmission[]
 
+  @@index([funnelId])
   @@index([currentStageId])
   @@index([isDeleted])
   @@index([responsibleUserId])
@@ -318,7 +373,7 @@ model ContentCalendarEntry {
   contentTheme  ContentTheme?   @map("content_theme")
   contentFormat ContentFormat?  @map("content_format")
   status        ContentStatus   @default(PLANNED)
-  scheduledDate DateTime        @db.Date @map("scheduled_date")
+  scheduledDate DateTime        @map("scheduled_date") @db.Date
   createdAt     DateTime        @default(now()) @map("created_at")
   updatedAt     DateTime        @updatedAt @map("updated_at")
 
@@ -350,8 +405,8 @@ model Alert {
 model Report {
   id            String     @id @default(cuid())
   type          ReportType
-  periodStart   DateTime   @db.Date @map("period_start")
-  periodEnd     DateTime   @db.Date @map("period_end")
+  periodStart   DateTime   @map("period_start") @db.Date
+  periodEnd     DateTime   @map("period_end") @db.Date
   generatedById String     @map("generated_by_id")
   fileUrl       String?    @map("file_url")
   createdAt     DateTime   @default(now()) @map("created_at")
@@ -392,7 +447,11 @@ model Webinar {
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
+  // Form Builder: formulario de registro customizavel
+  formTemplateId String? @unique @map("form_template_id")
+
   registrations WebinarRegistration[]
+  formTemplate  FormTemplate?         @relation("webinarForm", fields: [formTemplateId], references: [id])
 
   @@map("webinars")
 }
@@ -419,4 +478,124 @@ model WebinarRegistration {
   @@index([webinarId])
   @@index([leadId])
   @@map("webinar_registrations")
+}
+
+// =============================================================================
+// FORM BUILDER MODELS
+// =============================================================================
+
+model FormTemplate {
+  id          String     @id @default(cuid())
+  name        String // Nome interno
+  slug        String     @unique // URL-friendly identifier
+  title       String // Titulo exibido no form
+  description String? // Descricao/intro do form
+  status      FormStatus @default(DRAFT)
+
+  // Configuracoes de integracao com Lead
+  targetStageId     String? @map("target_stage_id") // FunnelStage para novos leads
+  sendNotification  Boolean @default(true) @map("send_notification")
+  notificationEmail String? @map("notification_email") // Email para alertar CIP
+  createTrelloCard  Boolean @default(false) @map("create_trello_card")
+
+  // Configuracoes de exibicao
+  submitButtonText String  @default("Enviar") @map("submit_button_text")
+  successMessage   String? @map("success_message")
+  redirectUrl      String? @map("redirect_url")
+
+  // Tracking
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  fields      FormField[]
+  submissions FormSubmission[]
+  createdBy   User             @relation("formCreator", fields: [createdById], references: [id])
+  targetStage FunnelStage?     @relation(fields: [targetStageId], references: [id])
+  webinar     Webinar?         @relation("webinarForm")
+
+  @@index([status])
+  @@index([createdById])
+  @@map("form_templates")
+}
+
+model FormField {
+  id          String    @id @default(cuid())
+  formId      String    @map("form_id")
+  fieldType   FieldType @map("field_type")
+  name        String // Nome interno do campo (para dados)
+  label       String // Label exibido
+  placeholder String?
+  helpText    String?   @map("help_text")
+  required    Boolean   @default(false)
+  position    Int // Ordem no form
+
+  // Validacao (JSON: { minLength, maxLength, pattern, etc. })
+  validation Json?
+
+  // Opcoes para SELECT, CHECKBOX (JSON: [{ label, value }, ...])
+  options Json?
+
+  // Logica condicional (JSON: { showWhen: { fieldName, operator, value } })
+  conditionalLogic Json? @map("conditional_logic")
+
+  // Mapeamento para campo do Lead (name, email, phone, etc.)
+  leadFieldMapping String? @map("lead_field_mapping")
+
+  // Valor padrao para campos HIDDEN
+  defaultValue String? @map("default_value")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  form      FormTemplate        @relation(fields: [formId], references: [id], onDelete: Cascade)
+  responses FormFieldResponse[]
+
+  @@index([formId, position])
+  @@map("form_fields")
+}
+
+model FormSubmission {
+  id     String  @id @default(cuid())
+  formId String  @map("form_id")
+  leadId String? @map("lead_id") // Lead criado/vinculado
+
+  // Contexto
+  ipAddress   String? @map("ip_address")
+  userAgent   String? @map("user_agent")
+  referrerUrl String? @map("referrer_url")
+
+  // UTM tracking
+  utmSource   String? @map("utm_source")
+  utmMedium   String? @map("utm_medium")
+  utmCampaign String? @map("utm_campaign")
+
+  // Modo de acesso
+  accessMode    FormAccessMode @default(PUBLIC) @map("access_mode")
+  submittedById String?        @map("submitted_by_id") // User se modo STAFF
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  form        FormTemplate        @relation(fields: [formId], references: [id], onDelete: Cascade)
+  lead        Lead?               @relation(fields: [leadId], references: [id])
+  submittedBy User?               @relation("submissionCreator", fields: [submittedById], references: [id])
+  responses   FormFieldResponse[]
+
+  @@index([formId])
+  @@index([leadId])
+  @@index([createdAt])
+  @@map("form_submissions")
+}
+
+model FormFieldResponse {
+  id           String @id @default(cuid())
+  submissionId String @map("submission_id")
+  fieldId      String @map("field_id")
+  value        String // Valor como string, parseado pelo fieldType
+
+  submission FormSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  field      FormField      @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@map("form_field_responses")
 }

@@ -10,6 +10,7 @@ export * from './client';
 export * from './templates/webinar-confirmation';
 export * from './templates/webinar-reminder';
 export * from './templates/webinar-replay';
+export * from './templates/form-submission';
 
 // Convenience functions for sending webinar emails
 import { sendEmail, isEmailConfigured } from './client';
@@ -28,6 +29,11 @@ import {
   webinarReplayHtml,
   webinarReplayText,
 } from './templates/webinar-replay';
+import {
+  formSubmissionSubject,
+  formSubmissionHtml,
+  formSubmissionText,
+} from './templates/form-submission';
 
 interface WebinarEmailParams {
   leadName: string;
@@ -91,5 +97,28 @@ export async function sendWebinarReplay(params: {
     subject: webinarReplaySubject(params),
     html: webinarReplayHtml(params),
     text: webinarReplayText(params),
+  });
+}
+
+/**
+ * Send form submission notification email
+ */
+export async function sendFormSubmissionNotification(params: {
+  to: string;
+  formTitle: string;
+  leadName: string;
+  leadEmail: string | null;
+  submissionId: string;
+}) {
+  if (!isEmailConfigured()) {
+    console.warn('[Email] Skipping form notification - not configured');
+    return { success: false, error: 'Not configured' };
+  }
+
+  return sendEmail({
+    to: params.to,
+    subject: formSubmissionSubject(params),
+    html: formSubmissionHtml(params),
+    text: formSubmissionText(params),
   });
 }

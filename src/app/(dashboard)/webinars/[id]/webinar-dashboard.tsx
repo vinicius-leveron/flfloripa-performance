@@ -32,6 +32,7 @@ import {
   Copy,
   ExternalLink,
   CheckCircle2,
+  Settings2,
 } from 'lucide-react';
 
 interface DashboardData {
@@ -42,6 +43,7 @@ interface DashboardData {
     status: string;
     scheduledAt: string;
     replayUrl: string | null;
+    formTemplateId: string | null;
   };
   metrics: {
     totalRegistrations: number;
@@ -195,6 +197,14 @@ export function WebinarDashboard({ webinarId }: WebinarDashboardProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          {webinar.formTemplateId && (
+            <Link href={`/forms/${webinar.formTemplateId}`}>
+              <Button variant="outline" size="sm">
+                <Settings2 size={14} className="mr-1.5" />
+                Personalizar Formulário
+              </Button>
+            </Link>
+          )}
           <Button variant="outline" size="sm" onClick={copyRegistrationLink}>
             <Copy size={14} className="mr-1.5" />
             Copiar Link
@@ -372,6 +382,14 @@ export function WebinarDashboard({ webinarId }: WebinarDashboardProps) {
                   Ver Replay
                 </Button>
               </a>
+            )}
+            {webinar.formTemplateId && (
+              <Link href={`/forms/${webinar.formTemplateId}`}>
+                <Button variant="outline" size="sm">
+                  <Settings2 size={14} className="mr-1.5" />
+                  Editar Formulário
+                </Button>
+              </Link>
             )}
           </div>
         </CardContent>

@@ -6,9 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { Select } from '@/shared/components/ui/select';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Badge } from '@/shared/components/ui/badge';
-import { TooltipProvider } from '@/shared/components/ui/tooltip';
-import { Progress } from '@/shared/components/ui/progress';
-import { Users, Target, DollarSign, TrendingUp, ArrowDown } from 'lucide-react';
+import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { Users, Target, DollarSign, TrendingUp, ArrowRight, Info } from 'lucide-react';
+
+interface Funnel {
+  id: string;
+  name: string;
+  slug: string;
+  color: string | null;
+  isDefault: boolean;
+  _count: { leads: number; stages: number };
+}
 
 interface FunnelStageData {
   id: string;
@@ -16,6 +24,7 @@ interface FunnelStageData {
   position: number;
   description: string | null;
   source: string;
+  syncTrello: boolean;
   leadCount: number;
   conversionRate: number;
 }
@@ -40,31 +49,12 @@ interface ChannelBreakdown {
 
 interface FunnelResponse {
   data: {
+    funnel: Funnel | null;
     stages: FunnelStageData[];
     metrics: FunnelMetrics;
     channelBreakdown: ChannelBreakdown[];
   };
 }
-
-const stageFills = [
-  '#1B2A4A',
-  '#2A3F6A',
-  '#3A5585',
-  '#E8792A',
-  '#D16A22',
-  '#F5A623',
-  '#4CAF50',
-];
-
-const stageColors = [
-  'bg-[#1B2A4A]',
-  'bg-[#2A3F6A]',
-  'bg-[#3A5585]',
-  'bg-[#E8792A]',
-  'bg-[#D16A22]',
-  'bg-[#F5A623]',
-  'bg-[#4CAF50]',
-];
 
 const periodOptions = [
   { label: 'Últimos 7 dias', value: '7d' },
@@ -83,113 +73,118 @@ function formatNumber(n: number): string {
   return n.toString();
 }
 
-function FunnelTrapezoid({ stages, maxLeads }: { stages: FunnelStageData[]; maxLeads: number }) {
-  const stageHeight = 48;
-  const gap = 6;
-  const totalHeight = stages.length * stageHeight + (stages.length - 1) * gap;
-  const svgWidth = 600;
-  const padding = 20;
-
+function FunnelBars({ stages, maxLeads, funnelColor }: { stages: FunnelStageData[]; maxLeads: number; funnelColor: string }) {
   return (
-    <svg viewBox={`0 0 ${svgWidth} ${totalHeight}`} className="w-full max-w-[600px] mx-auto" role="img" aria-label="Funil de conversão">
+    <div className="space-y-3">
       {stages.map((stage, i) => {
-        const widthPercent = maxLeads > 0
-          ? Math.max(0.25, stage.leadCount / maxLeads)
-          : 1 - i * 0.1;
-        const nextWidthPercent = i < stages.length - 1
-          ? Math.max(0.25, stages[i + 1].leadCount / maxLeads)
-          : widthPercent * 0.8;
-
-        const y = i * (stageHeight + gap);
-        const topHalf = (svgWidth - padding * 2) * widthPercent;
-        const bottomHalf = (svgWidth - padding * 2) * nextWidthPercent;
-        const topLeft = (svgWidth - topHalf) / 2;
-        const topRight = topLeft + topHalf;
-        const bottomLeft = (svgWidth - bottomHalf) / 2;
-        const bottomRight = bottomLeft + bottomHalf;
-
-        const points = `${topLeft},${y} ${topRight},${y} ${bottomRight},${y + stageHeight} ${bottomLeft},${y + stageHeight}`;
-        const fill = stageFills[i % stageFills.length];
-        const centerX = svgWidth / 2;
-        const centerY = y + stageHeight / 2;
+        const percent = maxLeads > 0 ? (stage.leadCount / maxLeads) * 100 : 0;
+        const prevStage = i > 0 ? stages[i - 1] : null;
+        const dropPercent = prevStage && prevStage.leadCount > 0
+          ? Math.round(((prevStage.leadCount - stage.leadCount) / prevStage.leadCount) * 100)
+          : 0;
 
         return (
-          <g key={stage.id}>
-            <polygon
-              points={points}
-              fill={fill}
-              className="transition-opacity hover:opacity-90"
-              rx="4"
-            />
-            <text
-              x={centerX - 60}
-              y={centerY + 1}
-              fill="white"
-              fontSize="12"
-              fontWeight="500"
-              dominantBaseline="middle"
-              textAnchor="start"
-            >
-              {stage.position}. {stage.name}
-            </text>
-            <text
-              x={centerX + 60}
-              y={centerY + 1}
-              fill="white"
-              fontSize="13"
-              fontWeight="700"
-              dominantBaseline="middle"
-              textAnchor="end"
-            >
-              {formatNumber(stage.leadCount)}
-            </text>
-            {stage.source === 'AUTO' && (
-              <text
-                x={centerX + 80}
-                y={centerY + 1}
-                fill="rgba(255,255,255,0.6)"
-                fontSize="9"
-                dominantBaseline="middle"
-              >
-                auto
-              </text>
+          <div key={stage.id} className="relative">
+            {/* Conversion indicator between stages */}
+            {i > 0 && (
+              <div className="flex items-center justify-center -mt-1 mb-1">
+                <div className="flex items-center gap-1 text-xs text-gray-400">
+                  <ArrowRight size={12} className="rotate-90" />
+                  <span>{stage.conversionRate}%</span>
+                  {dropPercent > 0 && (
+                    <span className="text-red-400">(-{dropPercent}%)</span>
+                  )}
+                </div>
+              </div>
             )}
-          </g>
+
+            <div className="flex items-center gap-4">
+              {/* Stage info */}
+              <div className="w-40 shrink-0">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="h-3 w-3 rounded-full shrink-0"
+                    style={{ backgroundColor: funnelColor }}
+                  />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-sm font-medium truncate cursor-help">
+                        {stage.position}. {stage.name}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{stage.description || `Estágio ${stage.position}`}</p>
+                      {stage.syncTrello && <p className="text-xs text-gray-400 mt-1">Sincroniza com Trello</p>}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="flex items-center gap-1 mt-0.5">
+                  {stage.source === 'AUTO' && (
+                    <Badge variant="secondary" className="text-[9px] px-1 py-0">auto</Badge>
+                  )}
+                  {stage.syncTrello && (
+                    <Badge variant="outline" className="text-[9px] px-1 py-0">trello</Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="flex-1 relative">
+                <div className="h-8 bg-gray-100 rounded-lg overflow-hidden">
+                  <div
+                    className="h-full rounded-lg transition-all duration-500 flex items-center justify-end pr-3"
+                    style={{
+                      width: `${Math.max(percent, 5)}%`,
+                      backgroundColor: funnelColor,
+                      opacity: 0.15 + (0.85 * (1 - i / stages.length)),
+                    }}
+                  >
+                    <span className="text-sm font-bold" style={{ color: funnelColor }}>
+                      {stage.leadCount}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Percentage */}
+              <div className="w-14 text-right shrink-0">
+                <span className="text-sm text-gray-500">{Math.round(percent)}%</span>
+              </div>
+            </div>
+          </div>
         );
       })}
-      {/* Conversion arrows between stages */}
-      {stages.slice(0, -1).map((_, i) => {
-        const y = (i + 1) * (stageHeight + gap) - gap / 2;
-        return (
-          <text
-            key={`conv-${i}`}
-            x={svgWidth / 2}
-            y={y}
-            fill="#9CA3AF"
-            fontSize="10"
-            textAnchor="middle"
-            dominantBaseline="middle"
-          >
-            ↓ {stages[i + 1].conversionRate}%
-          </text>
-        );
-      })}
-    </svg>
+    </div>
   );
 }
 
 export function FunnelClient() {
   const [period, setPeriod] = useState('30d');
+  const [selectedFunnelId, setSelectedFunnelId] = useState('');
 
+  // Fetch all funnels
+  const { data: funnelsData } = useQuery<{ data: Funnel[] }>({
+    queryKey: ['funnels'],
+    queryFn: () => fetch('/api/funnels').then(r => r.json()),
+  });
+
+  const funnels = funnelsData?.data || [];
+  const defaultFunnel = funnels.find(f => f.isDefault) || funnels[0];
+  const activeFunnelId = selectedFunnelId || defaultFunnel?.id || '';
+  const activeFunnel = funnels.find(f => f.id === activeFunnelId);
+
+  // Fetch metrics for selected funnel
   const { data, isLoading } = useQuery<FunnelResponse>({
-    queryKey: ['funnel-metrics', period],
-    queryFn: () => fetch(`/api/funnel/metrics?period=${period}`).then(r => r.json()),
+    queryKey: ['funnel-metrics', period, activeFunnelId],
+    queryFn: () => fetch(`/api/funnel/metrics?period=${period}&funnelId=${activeFunnelId}`).then(r => r.json()),
+    enabled: !!activeFunnelId,
   });
 
   const stages = data?.data?.stages || [];
   const metrics = data?.data?.metrics;
   const channelBreakdown = data?.data?.channelBreakdown || [];
   const maxLeads = Math.max(...stages.map(s => s.leadCount), 1);
+  const funnelColor = activeFunnel?.color || '#E8792A';
 
   const kpiCards = [
     { title: 'Total de Leads', icon: Users, color: 'text-[#1B2A4A] bg-[#1B2A4A]/10', value: metrics?.totalLeads, format: formatNumber },
@@ -217,6 +212,33 @@ export function FunnelClient() {
             className="w-48"
           />
         </div>
+
+        {/* Funnel Tabs */}
+        {funnels.length > 0 && (
+          <div className="flex gap-2 border-b pb-2">
+            {funnels.map(funnel => (
+              <button
+                key={funnel.id}
+                onClick={() => setSelectedFunnelId(funnel.id)}
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                  activeFunnelId === funnel.id
+                    ? 'bg-white border border-b-white -mb-[3px] text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+                style={activeFunnelId === funnel.id && funnel.color ? { borderTopColor: funnel.color, borderTopWidth: '3px' } : {}}
+              >
+                <span className="flex items-center gap-2">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: funnel.color || '#E8792A' }}
+                  />
+                  {funnel.name}
+                </span>
+                <span className="ml-2 text-xs text-gray-400">({funnel._count.leads})</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="space-y-4">
@@ -262,46 +284,33 @@ export function FunnelClient() {
             ) : (
               <>
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Funil de Ingresso Logosófico</CardTitle>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <span
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: funnelColor }}
+                      />
+                      Funil: {activeFunnel?.name || 'Carregando...'}
+                    </CardTitle>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="text-gray-400 hover:text-gray-600">
+                          <Info size={16} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>Visualização do funil de conversão.</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          As barras mostram a proporção de leads em cada estágio.
+                          Percentuais indicam a taxa de conversão entre estágios.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   </CardHeader>
-                  <CardContent className="overflow-hidden">
-                    <FunnelTrapezoid stages={stages} maxLeads={maxLeads} />
+                  <CardContent>
+                    <FunnelBars stages={stages} maxLeads={maxLeads} funnelColor={funnelColor} />
                   </CardContent>
                 </Card>
-
-                {/* Stage Details */}
-                <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-7">
-                  {stages.map((stage, i) => {
-                    const percent = maxLeads > 0 ? Math.round((stage.leadCount / maxLeads) * 100) : 0;
-                    return (
-                      <Card key={stage.id} className="transition-shadow hover:shadow-md">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="flex items-center gap-2 text-xs">
-                            <div className={`h-3 w-3 rounded-full ${stageColors[i % stageColors.length]}`} />
-                            {stage.name}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-xl font-bold">{stage.leadCount}</div>
-                          <Progress value={percent} className="mt-2 h-1.5" />
-                          <p className="mt-1 text-[10px] text-gray-500 leading-tight">
-                            {stage.description || `Estágio ${stage.position}`}
-                          </p>
-                          {i > 0 && (
-                            <div className="mt-1 flex items-center gap-1">
-                              <ArrowDown size={10} className="text-gray-400" />
-                              <span className="text-xs text-gray-400">{stage.conversionRate}%</span>
-                            </div>
-                          )}
-                          {stage.source === 'AUTO' && (
-                            <Badge variant="secondary" className="mt-1 text-[9px] px-1.5 py-0">auto</Badge>
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
 
                 {/* Channel Breakdown */}
                 {channelBreakdown.length > 0 && (

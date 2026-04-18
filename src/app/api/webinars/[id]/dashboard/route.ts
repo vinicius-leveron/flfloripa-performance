@@ -95,6 +95,7 @@ export async function GET(
           status: webinar.status,
           scheduledAt: webinar.scheduledAt,
           replayUrl: webinar.replayUrl,
+          formTemplateId: webinar.formTemplateId,
         },
         metrics,
         trafficBreakdown,

@@ -55,17 +55,25 @@ export async function POST(
       },
     });
 
-    // Get stage 1 (Lead) for new leads
-    const leadStage = await prisma.funnelStage.findFirst({
-      where: { position: 1 },
+    // Get webinar funnel and its first stage (Inscrito)
+    const webinarFunnel = await prisma.funnel.findUnique({
+      where: { slug: 'webinar' },
+      include: {
+        stages: {
+          where: { position: 1 },
+          take: 1,
+        },
+      },
     });
 
-    if (!leadStage) {
+    if (!webinarFunnel || webinarFunnel.stages.length === 0) {
       return NextResponse.json(
         { error: { code: 'SERVER_ERROR', message: 'Configuração de funil inválida' } },
         { status: 500 }
       );
     }
+
+    const leadStage = webinarFunnel.stages[0];
 
     // Get a system user for auto-registrations (first admin)
     const systemUser = await prisma.user.findFirst({
@@ -80,13 +88,14 @@ export async function POST(
     }
 
     if (!lead) {
-      // Create new lead
+      // Create new lead in webinar funnel
       lead = await prisma.lead.create({
         data: {
           name: data.name,
           email: data.email,
           phone: data.phone || null,
           channelOrigin: data.utmSource || 'webinar',
+          funnelId: webinarFunnel.id,
           currentStageId: leadStage.id,
           registeredById: systemUser.id,
           utmSource: data.utmSource || null,

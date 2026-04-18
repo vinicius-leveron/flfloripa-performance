@@ -13,6 +13,8 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const period = url.searchParams.get('period') || '30d';
     const channelOrigin = url.searchParams.get('channelOrigin');
+    const funnelId = url.searchParams.get('funnelId');
+    const funnelSlug = url.searchParams.get('funnelSlug');
 
     // Calculate date filter
     const now = new Date();
@@ -22,13 +24,31 @@ export async function GET(request: Request) {
       ? { gte: new Date(now.getTime() - days * 24 * 60 * 60 * 1000) }
       : undefined;
 
+    // Determine funnel filter
+    let targetFunnelId: string | undefined;
+    if (funnelId) {
+      targetFunnelId = funnelId;
+    } else if (funnelSlug) {
+      const funnel = await prisma.funnel.findUnique({ where: { slug: funnelSlug } });
+      if (funnel) targetFunnelId = funnel.id;
+    } else {
+      const defaultFunnel = await prisma.funnel.findFirst({ where: { isDefault: true } });
+      if (defaultFunnel) targetFunnelId = defaultFunnel.id;
+    }
+
     const leadWhere: Record<string, unknown> = { isDeleted: false };
     if (dateFilter) leadWhere.createdAt = dateFilter;
     if (channelOrigin) leadWhere.channelOrigin = channelOrigin;
+    if (targetFunnelId) leadWhere.funnelId = targetFunnelId;
 
-    // Get all stages
+    // Get stages for the selected funnel
+    const stageWhere: Record<string, unknown> = {};
+    if (targetFunnelId) stageWhere.funnelId = targetFunnelId;
+
     const stages = await prisma.funnelStage.findMany({
+      where: stageWhere,
       orderBy: { position: 'asc' },
+      include: { funnel: { select: { id: true, name: true, slug: true, color: true } } },
     });
 
     // Count leads per stage
@@ -45,7 +65,8 @@ export async function GET(request: Request) {
 
     // Total leads and ingressos
     const totalLeads = await prisma.lead.count({ where: leadWhere });
-    const ingressoStage = stages.find((s: typeof stages[number]) => s.position === 7);
+    // Find "Ingressou" stage by name (last stage before dropout)
+    const ingressoStage = stages.find((s: typeof stages[number]) => s.name === 'Ingressou');
     const totalIngressos = ingressoStage ? (stageCountMap[ingressoStage.id] || 0) : 0;
 
     // Ad spend totals
@@ -55,19 +76,19 @@ export async function GET(request: Request) {
     });
     const totalAdSpend = adSpendResult._sum.adSpend || 0;
 
-    // Inscrito atividade count (position 3+)
-    const inscritoStage = stages.find((s: typeof stages[number]) => s.position === 3);
-    const inscritosCount = inscritoStage ? (stageCountMap[inscritoStage.id] || 0) : 0;
+    // Find "Visitou Sede" stage for cost per lead calculation
+    const visitouStage = stages.find((s: typeof stages[number]) => s.name === 'Visitou Sede');
+    const visitouCount = visitouStage ? (stageCountMap[visitouStage.id] || 0) : 0;
 
-    // Cost per lead = total ad spend / inscritos atividade
-    const costPerLead = inscritosCount > 0 ? totalAdSpend / inscritosCount : 0;
+    // Cost per lead = total ad spend / visitou sede
+    const costPerLead = visitouCount > 0 ? totalAdSpend / visitouCount : 0;
     const costPerIngresso = totalIngressos > 0 ? totalAdSpend / totalIngressos : 0;
 
-    // Overall conversion rate (impactado → ingressou)
-    const impactadoStage = stages.find((s: typeof stages[number]) => s.position === 1);
-    const impactadoCount = impactadoStage ? (stageCountMap[impactadoStage.id] || 0) : 0;
-    const overallConversionRate = impactadoCount > 0
-      ? Math.round((totalIngressos / impactadoCount) * 10000) / 100
+    // Overall conversion rate (first stage → ingressou)
+    const firstStage = stages.find((s: typeof stages[number]) => s.position === 1);
+    const firstStageCount = firstStage ? (stageCountMap[firstStage.id] || 0) : 0;
+    const overallConversionRate = firstStageCount > 0
+      ? Math.round((totalIngressos / firstStageCount) * 10000) / 100
       : 0;
 
     // Stages with conversion rates
@@ -84,6 +105,9 @@ export async function GET(request: Request) {
         position: stage.position,
         description: stage.description,
         source: stage.source,
+        syncTrello: stage.syncTrello,
+        funnelId: stage.funnelId,
+        funnel: stage.funnel,
         leadCount: count,
         conversionRate,
       };
@@ -119,8 +143,14 @@ export async function GET(request: Request) {
       })
     );
 
+    // Get funnel info for response
+    const currentFunnel = targetFunnelId
+      ? await prisma.funnel.findUnique({ where: { id: targetFunnelId } })
+      : null;
+
     return NextResponse.json({
       data: {
+        funnel: currentFunnel,
         stages: stagesWithMetrics,
         metrics: {
           totalLeads,

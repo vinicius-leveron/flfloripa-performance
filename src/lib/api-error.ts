@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { ZodError } from 'zod';
 
 export class AppError extends Error {
   constructor(
@@ -27,6 +28,31 @@ export function handleApiError(error: unknown) {
         },
       },
       { status: error.status }
+    );
+  }
+
+  // Handle Zod validation errors
+  if (error instanceof ZodError) {
+    const details: Record<string, string[]> = {};
+    for (const issue of error.issues) {
+      const path = issue.path.join('.');
+      if (!details[path]) {
+        details[path] = [];
+      }
+      details[path].push(issue.message);
+    }
+
+    return NextResponse.json(
+      {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos',
+          details,
+          timestamp,
+          requestId,
+        },
+      },
+      { status: 400 }
     );
   }
 

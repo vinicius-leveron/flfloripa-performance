@@ -2,7 +2,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -12,6 +11,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/components/ui/tabs';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { LeadModal } from '@/shared/components/lead-modal';
 import { Plus, Search, Trash2, ArrowRight, ChevronDown, ChevronUp, Clock, User, Mail, Phone, Video, LayoutGrid, List } from 'lucide-react';
 
 interface LeadEvent {
@@ -49,6 +49,18 @@ interface FunnelStage {
   id: string;
   name: string;
   position: number;
+  funnelId: string;
+  funnel?: { id: string; name: string; slug: string; color: string | null };
+}
+
+interface Funnel {
+  id: string;
+  name: string;
+  slug: string;
+  color: string | null;
+  isDefault: boolean;
+  _count: { leads: number; stages: number };
+  stages: { id: string; name: string; position: number }[];
 }
 
 const lifeMomentOptions = [
@@ -85,13 +97,17 @@ export function LeadsClient() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState('');
+  const [selectedFunnelId, setSelectedFunnelId] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [expandedLead, setExpandedLead] = useState<string | null>(null);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     channelOrigin: '',
+    funnelId: '',
     currentStageId: '',
     notes: '',
     lifeMoment: '',
@@ -102,21 +118,38 @@ export function LeadsClient() {
     utmCampaign: '',
   });
 
+  // Fetch all funnels
+  const { data: funnelsData } = useQuery<{ data: Funnel[] }>({
+    queryKey: ['funnels'],
+    queryFn: () => fetch('/api/funnels').then(r => r.json()),
+  });
+
+  const funnels = funnelsData?.data || [];
+
+  // Set default funnel on first load
+  const defaultFunnel = funnels.find(f => f.isDefault) || funnels[0];
+  const activeFunnelId = selectedFunnelId || defaultFunnel?.id || '';
+
+  // Fetch stages for selected funnel
   const { data: stagesData } = useQuery<{ data: FunnelStage[] }>({
-    queryKey: ['funnel-stages'],
-    queryFn: () => fetch('/api/funnel/stages').then(r => r.json()),
+    queryKey: ['funnel-stages', activeFunnelId],
+    queryFn: () => fetch(`/api/funnel/stages?funnelId=${activeFunnelId}`).then(r => r.json()),
+    enabled: !!activeFunnelId,
   });
 
   const stages = stagesData?.data || [];
 
+  // Fetch leads for selected funnel
   const { data, isLoading } = useQuery<{ data: Lead[]; meta: { total: number; page: number; totalPages: number } }>({
-    queryKey: ['leads', search, stageFilter],
+    queryKey: ['leads', search, stageFilter, activeFunnelId],
     queryFn: () => {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (stageFilter) params.set('stageId', stageFilter);
+      if (activeFunnelId) params.set('funnelId', activeFunnelId);
       return fetch(`/api/leads?${params}`).then(r => r.json());
     },
+    enabled: !!activeFunnelId,
   });
 
   const createMutation = useMutation({
@@ -131,8 +164,9 @@ export function LeadsClient() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['funnel-stages'] });
+      queryClient.invalidateQueries({ queryKey: ['funnels'] });
       setShowForm(false);
-      setFormData({ name: '', email: '', phone: '', channelOrigin: '', currentStageId: '', notes: '', lifeMoment: '', inquiry: '', source: '', utmSource: '', utmMedium: '', utmCampaign: '' });
+      setFormData({ name: '', email: '', phone: '', channelOrigin: '', funnelId: '', currentStageId: '', notes: '', lifeMoment: '', inquiry: '', source: '', utmSource: '', utmMedium: '', utmCampaign: '' });
     },
   });
 
@@ -179,6 +213,30 @@ export function LeadsClient() {
           </Button>
         </div>
 
+        {/* Funnel Tabs */}
+        {funnels.length > 0 && (
+          <div className="flex gap-2 border-b pb-2">
+            {funnels.map(funnel => (
+              <button
+                key={funnel.id}
+                onClick={() => {
+                  setSelectedFunnelId(funnel.id);
+                  setStageFilter('');
+                }}
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                  activeFunnelId === funnel.id
+                    ? 'bg-white border border-b-white -mb-[3px] text-gray-900'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+                style={activeFunnelId === funnel.id && funnel.color ? { borderTopColor: funnel.color, borderTopWidth: '3px' } : {}}
+              >
+                {funnel.name}
+                <span className="ml-2 text-xs text-gray-400">({funnel._count.leads})</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Filters */}
         <div className="flex gap-3">
           <div className="relative flex-1">
@@ -208,6 +266,11 @@ export function LeadsClient() {
                 onSubmit={(e) => {
                   e.preventDefault();
                   const submitData = { ...formData };
+                  // Use selected funnel or current funnel
+                  if (!submitData.funnelId) {
+                    submitData.funnelId = activeFunnelId;
+                  }
+                  // Use first stage of selected funnel if not set
                   if (!submitData.currentStageId && stages.length > 0) {
                     submitData.currentStageId = stages[0].id;
                   }
@@ -225,6 +288,25 @@ export function LeadsClient() {
                   </div>
                 </div>
 
+                {/* Funil e Estágio */}
+                <div>
+                  <p className="mb-2 text-xs font-medium text-gray-500 uppercase">Funil</p>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Select
+                      options={funnels.map(f => ({ label: f.name, value: f.id }))}
+                      value={formData.funnelId || activeFunnelId}
+                      onChange={(e) => {
+                        setFormData(d => ({ ...d, funnelId: e.target.value, currentStageId: '' }));
+                      }}
+                    />
+                    <Select
+                      options={(formData.funnelId ? funnels.find(f => f.id === formData.funnelId)?.stages || stages : stages).map(s => ({ label: s.name, value: s.id }))}
+                      value={formData.currentStageId}
+                      onChange={(e) => setFormData(d => ({ ...d, currentStageId: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
                 {/* Perfil / Avatar */}
                 <div>
                   <p className="mb-2 text-xs font-medium text-gray-500 uppercase">Perfil / Avatar</p>
@@ -236,11 +318,6 @@ export function LeadsClient() {
                     />
                     <Input placeholder="Inquietude principal" value={formData.inquiry} onChange={(e) => setFormData(d => ({ ...d, inquiry: e.target.value }))} />
                     <Input placeholder="Fonte/Criativo" value={formData.source} onChange={(e) => setFormData(d => ({ ...d, source: e.target.value }))} />
-                    <Select
-                      options={stages.map(s => ({ label: s.name, value: s.id }))}
-                      value={formData.currentStageId}
-                      onChange={(e) => setFormData(d => ({ ...d, currentStageId: e.target.value }))}
-                    />
                   </div>
                 </div>
 
@@ -267,10 +344,10 @@ export function LeadsClient() {
         )}
 
         {/* Leads Views */}
-        <Tabs defaultValue="list">
+        <Tabs defaultValue="pipeline">
           <TabsList>
-            <TabsTrigger value="list"><List size={14} className="mr-1" /> Lista</TabsTrigger>
             <TabsTrigger value="pipeline"><LayoutGrid size={14} className="mr-1" /> Pipeline</TabsTrigger>
+            <TabsTrigger value="list"><List size={14} className="mr-1" /> Lista</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pipeline">
@@ -297,19 +374,17 @@ export function LeadsClient() {
                       <ScrollArea className="h-[500px]">
                         <div className="space-y-2 pr-2">
                           {stageLeads.map((lead) => (
-                            <Card key={lead.id} className="transition-shadow hover:shadow-md">
+                            <Card key={lead.id} className="transition-shadow hover:shadow-md cursor-pointer" onClick={() => { setSelectedLeadId(lead.id); setModalOpen(true); }}>
                               <CardContent className="p-3">
-                                <Link href={`/leads/${lead.id}`} className="block">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <LeadAvatar name={lead.name} />
-                                    <div className="min-w-0">
-                                      <p className="text-sm font-medium truncate hover:text-[#E8792A] transition-colors">{lead.name}</p>
-                                      {lead.channelOrigin && (
-                                        <p className="text-[10px] text-gray-400">via {lead.channelOrigin}</p>
-                                      )}
-                                    </div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <LeadAvatar name={lead.name} />
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-medium truncate hover:text-[#E8792A] transition-colors">{lead.name}</p>
+                                    {lead.channelOrigin && (
+                                      <p className="text-[10px] text-gray-400">via {lead.channelOrigin}</p>
+                                    )}
                                   </div>
-                                </Link>
+                                </div>
                                 <div className="flex flex-wrap gap-1 mt-1">
                                   {lead.lifeMoment && (
                                     <Badge variant="info" className="text-[8px] px-1 py-0">{lifeMomentLabels[lead.lifeMoment] || lead.lifeMoment}</Badge>
@@ -374,7 +449,12 @@ export function LeadsClient() {
                       <LeadAvatar name={lead.name} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <Link href={`/leads/${lead.id}`} className="font-medium truncate hover:text-[#E8792A] transition-colors">{lead.name}</Link>
+                          <button
+                            onClick={() => { setSelectedLeadId(lead.id); setModalOpen(true); }}
+                            className="font-medium truncate hover:text-[#E8792A] transition-colors text-left"
+                          >
+                            {lead.name}
+                          </button>
                           <button
                             onClick={() => setExpandedLead(isExpanded ? null : lead.id)}
                             className="rounded p-0.5 text-gray-400 hover:bg-gray-100"
@@ -540,6 +620,17 @@ export function LeadsClient() {
         )}
           </TabsContent>
         </Tabs>
+
+        {/* Lead Modal */}
+        <LeadModal
+          leadId={selectedLeadId}
+          open={modalOpen}
+          onOpenChange={(open) => {
+            setModalOpen(open);
+            if (!open) setSelectedLeadId(null);
+          }}
+          stages={stages}
+        />
       </div>
     </TooltipProvider>
   );

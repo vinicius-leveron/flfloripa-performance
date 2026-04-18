@@ -55,26 +55,104 @@ async function main() {
   console.log('✓ Users created (admin: demo@logosofia.org.br / demo1234)');
 
   // ============================
-  // 2. Funnel Stages (7 ingresso stages) — Novo funil webinar
+  // 2. Funnels + Stages — 3 funis separados
   // ============================
-  const stages = [
-    { name: 'Lead', position: 1, description: 'Se inscreveu no webinar', source: 'AUTO' as const },
-    { name: 'Participou', position: 2, description: 'Assistiu ao webinar (ao vivo ou replay)', source: 'AUTO' as const },
-    { name: 'Visitou Sede', position: 3, description: 'Foi a reunião presencial na sede', source: 'MANUAL' as const },
-    { name: 'Curso de Informação', position: 4, description: 'Participou do curso de informação', source: 'MANUAL' as const },
-    { name: 'Curso de Preparação', position: 5, description: 'Participou do curso de preparação', source: 'MANUAL' as const },
-    { name: 'Ingressou', position: 6, description: 'Membro efetivo da Fundação Logosófica', source: 'MANUAL' as const },
-    { name: 'Desistiu', position: 7, description: 'Desistiu do processo em qualquer etapa', source: 'MANUAL' as const },
+
+  // Create funnels
+  const funnelWebinar = await prisma.funnel.upsert({
+    where: { slug: 'webinar' },
+    update: {},
+    create: {
+      id: 'funnel-webinar',
+      name: 'Webinar',
+      slug: 'webinar',
+      description: 'Leads que vieram através de webinars',
+      color: '#E8792A',
+      isDefault: true,
+    },
+  });
+
+  const funnelIndicacao = await prisma.funnel.upsert({
+    where: { slug: 'indicacao' },
+    update: {},
+    create: {
+      id: 'funnel-indicacao',
+      name: 'Indicação',
+      slug: 'indicacao',
+      description: 'Leads indicados por membros ou conhecidos',
+      color: '#3B82F6',
+      isDefault: false,
+    },
+  });
+
+  const funnelEventos = await prisma.funnel.upsert({
+    where: { slug: 'eventos' },
+    update: {},
+    create: {
+      id: 'funnel-eventos',
+      name: 'Eventos',
+      slug: 'eventos',
+      description: 'Leads de universidades, palestras e eventos',
+      color: '#10B981',
+      isDefault: false,
+    },
+  });
+
+  console.log('✓ 3 funnels created (webinar, indicação, eventos)');
+
+  // Stages for each funnel
+  const webinarStages = [
+    { name: 'Inscrito', position: 1, description: 'Se inscreveu no webinar', source: 'AUTO' as const, syncTrello: false },
+    { name: 'Participou Webinar', position: 2, description: 'Assistiu ao webinar (ao vivo ou replay)', source: 'AUTO' as const, syncTrello: false },
+    { name: 'Visitou Sede', position: 3, description: 'Foi a reunião presencial na sede', source: 'MANUAL' as const, syncTrello: true },
+    { name: 'Curso de Informação', position: 4, description: 'Participou do curso de informação', source: 'MANUAL' as const, syncTrello: true },
+    { name: 'Curso de Preparação', position: 5, description: 'Participou do curso de preparação', source: 'MANUAL' as const, syncTrello: true },
+    { name: 'Ingressou', position: 6, description: 'Membro efetivo da Fundação Logosófica', source: 'MANUAL' as const, syncTrello: true },
   ];
 
-  for (const stage of stages) {
+  const indicacaoStages = [
+    { name: 'Indicado', position: 1, description: 'Recebeu indicação de membro ou conhecido', source: 'MANUAL' as const, syncTrello: false },
+    { name: 'Contatado', position: 2, description: 'Foi contatado e demonstrou interesse', source: 'MANUAL' as const, syncTrello: false },
+    { name: 'Visitou Sede', position: 3, description: 'Foi a reunião presencial na sede', source: 'MANUAL' as const, syncTrello: true },
+    { name: 'Curso de Informação', position: 4, description: 'Participou do curso de informação', source: 'MANUAL' as const, syncTrello: true },
+    { name: 'Curso de Preparação', position: 5, description: 'Participou do curso de preparação', source: 'MANUAL' as const, syncTrello: true },
+    { name: 'Ingressou', position: 6, description: 'Membro efetivo da Fundação Logosófica', source: 'MANUAL' as const, syncTrello: true },
+  ];
+
+  const eventosStages = [
+    { name: 'Interessado', position: 1, description: 'Demonstrou interesse em evento', source: 'MANUAL' as const, syncTrello: false },
+    { name: 'Visitou Sede', position: 2, description: 'Foi a reunião presencial na sede', source: 'MANUAL' as const, syncTrello: true },
+    { name: 'Curso de Informação', position: 3, description: 'Participou do curso de informação', source: 'MANUAL' as const, syncTrello: true },
+    { name: 'Curso de Preparação', position: 4, description: 'Participou do curso de preparação', source: 'MANUAL' as const, syncTrello: true },
+    { name: 'Ingressou', position: 5, description: 'Membro efetivo da Fundação Logosófica', source: 'MANUAL' as const, syncTrello: true },
+  ];
+
+  // Create stages for each funnel
+  for (const stage of webinarStages) {
     await prisma.funnelStage.upsert({
-      where: { id: `stage-${stage.position}` },
-      update: stage,
-      create: { id: `stage-${stage.position}`, ...stage },
+      where: { id: `stage-webinar-${stage.position}` },
+      update: { ...stage, funnelId: funnelWebinar.id },
+      create: { id: `stage-webinar-${stage.position}`, funnelId: funnelWebinar.id, ...stage },
     });
   }
-  console.log('✓ 7 funnel stages created');
+
+  for (const stage of indicacaoStages) {
+    await prisma.funnelStage.upsert({
+      where: { id: `stage-indicacao-${stage.position}` },
+      update: { ...stage, funnelId: funnelIndicacao.id },
+      create: { id: `stage-indicacao-${stage.position}`, funnelId: funnelIndicacao.id, ...stage },
+    });
+  }
+
+  for (const stage of eventosStages) {
+    await prisma.funnelStage.upsert({
+      where: { id: `stage-eventos-${stage.position}` },
+      update: { ...stage, funnelId: funnelEventos.id },
+      create: { id: `stage-eventos-${stage.position}`, funnelId: funnelEventos.id, ...stage },
+    });
+  }
+
+  console.log('✓ Funnel stages created (webinar: 6, indicação: 6, eventos: 5)');
 
   // ============================
   // 3. Channels
@@ -142,42 +220,55 @@ async function main() {
   }
 
   // ============================
-  // 5. Sample Leads across all stages — Novo funil webinar
+  // 5. Sample Leads across all funnels
   // ============================
   const existingLeads = await prisma.lead.count();
   if (existingLeads === 0) {
-    const leadNames = [
-      // Stage 1 - Lead (inscrito no webinar)
+    // Leads do funil Webinar
+    const webinarLeads = [
       { name: 'Ana Carolina', stage: 1, channel: 'Instagram', lifeMoment: 'autoconhecimento', inquiry: 'Sinto que preciso de algo mais profundo', utm: { source: 'meta', medium: 'cpc', campaign: 'webinar-abril-2026' } },
       { name: 'Bruno Martins', stage: 1, channel: 'TikTok', lifeMoment: 'transicao_carreira', inquiry: 'Mudança de vida', utm: { source: 'tiktok', medium: 'organic', campaign: 'webinar-abril-2026' } },
       { name: 'Camila Ferreira', stage: 1, channel: 'Instagram', utm: { source: 'meta', medium: 'cpc', campaign: 'webinar-abril-2026' } },
       { name: 'Diego Souza', stage: 1, channel: 'Instagram' },
       { name: 'Eduarda Lima', stage: 1, channel: 'YouTube' },
-      // Stage 2 - Participou (assistiu ao webinar)
       { name: 'Fernanda Oliveira', stage: 2, channel: 'Instagram', email: 'fernanda.o@email.com', lifeMoment: 'busca_espiritual', inquiry: 'Procurando propósito na vida', utm: { source: 'meta', medium: 'cpc', campaign: 'webinar-abril-2026' } },
       { name: 'Gabriel Santos', stage: 2, channel: 'TikTok', email: 'gabriel.s@email.com', phone: '(48) 99123-4567' },
       { name: 'Helena Costa', stage: 2, channel: 'Instagram', email: 'helena.c@email.com' },
-      // Stage 3 - Visitou Sede (foi à reunião presencial)
       { name: 'Igor Mendes', stage: 3, channel: 'Instagram', email: 'igor.m@email.com', phone: '(48) 99234-5678', lifeMoment: 'paternidade', inquiry: 'Como educar meus filhos com valores', utm: { source: 'meta', medium: 'cpc', campaign: 'webinar-abril-2026' } },
       { name: 'Julia Ribeiro', stage: 3, channel: 'YouTube', email: 'julia.r@email.com', phone: '(48) 99345-6789', lifeMoment: 'autoconhecimento' },
-      // Stage 4 - Curso de Informação
       { name: 'Kevin Almeida', stage: 4, channel: 'Instagram', email: 'kevin.a@email.com', phone: '(48) 99456-7890', lifeMoment: 'busca_espiritual', inquiry: 'Conhecimento que transforma' },
-      // Stage 5 - Curso de Preparação
       { name: 'Larissa Duarte', stage: 5, channel: 'Instagram', email: 'larissa.d@email.com', phone: '(48) 99567-8901', lifeMoment: 'transicao_carreira' },
-      // Stage 6 - Ingressou
       { name: 'Marcos Vieira', stage: 6, channel: 'TikTok', email: 'marcos.v@email.com', phone: '(48) 99678-9012', lifeMoment: 'busca_espiritual', inquiry: 'Encontrei o que buscava' },
-      // Stage 7 - Desistiu
-      { name: 'Natália Prado', stage: 7, channel: 'Instagram', email: 'natalia.p@email.com', phone: '(48) 99789-0123', lifeMoment: 'crise_pessoal' },
     ];
 
-    for (const lead of leadNames) {
+    // Leads do funil Indicação
+    const indicacaoLeads = [
+      { name: 'Patrícia Mendonça', stage: 1, channel: 'Indicação', email: 'patricia.m@email.com', lifeMoment: 'busca_espiritual', inquiry: 'Minha prima me indicou' },
+      { name: 'Roberto Campos', stage: 2, channel: 'Indicação', email: 'roberto.c@email.com', phone: '(48) 99111-2222' },
+      { name: 'Sandra Lima', stage: 3, channel: 'Indicação', email: 'sandra.l@email.com', phone: '(48) 99222-3333', lifeMoment: 'autoconhecimento' },
+      { name: 'Thiago Neves', stage: 4, channel: 'Indicação', email: 'thiago.n@email.com', phone: '(48) 99333-4444' },
+      { name: 'Vanessa Rocha', stage: 6, channel: 'Indicação', email: 'vanessa.r@email.com', phone: '(48) 99444-5555', lifeMoment: 'transicao_carreira' },
+    ];
+
+    // Leads do funil Eventos
+    const eventosLeads = [
+      { name: 'Wagner Silva', stage: 1, channel: 'Palestra UFSC', email: 'wagner.s@email.com' },
+      { name: 'Ximena Borges', stage: 1, channel: 'Feira do Livro', lifeMoment: 'autoconhecimento' },
+      { name: 'Yuri Costa', stage: 2, channel: 'Palestra UFSC', email: 'yuri.c@email.com', phone: '(48) 99555-6666' },
+      { name: 'Zélia Martins', stage: 3, channel: 'Evento empresarial', email: 'zelia.m@email.com', phone: '(48) 99666-7777', lifeMoment: 'busca_espiritual' },
+      { name: 'Alberto Ramos', stage: 5, channel: 'Palestra UDESC', email: 'alberto.r@email.com', phone: '(48) 99777-8888' },
+    ];
+
+    // Create webinar leads
+    for (const lead of webinarLeads) {
       await prisma.lead.create({
         data: {
           name: lead.name,
           email: lead.email || null,
           phone: lead.phone || null,
           channelOrigin: lead.channel,
-          currentStageId: `stage-${lead.stage}`,
+          funnelId: funnelWebinar.id,
+          currentStageId: `stage-webinar-${lead.stage}`,
           registeredById: adminUser.id,
           lifeMoment: lead.lifeMoment || null,
           inquiry: lead.inquiry || null,
@@ -189,35 +280,71 @@ async function main() {
       });
     }
 
+    // Create indicação leads
+    for (const lead of indicacaoLeads) {
+      await prisma.lead.create({
+        data: {
+          name: lead.name,
+          email: lead.email || null,
+          phone: lead.phone || null,
+          channelOrigin: lead.channel,
+          funnelId: funnelIndicacao.id,
+          currentStageId: `stage-indicacao-${lead.stage}`,
+          registeredById: adminUser.id,
+          lifeMoment: lead.lifeMoment || null,
+          inquiry: lead.inquiry || null,
+        },
+      });
+    }
+
+    // Create eventos leads
+    for (const lead of eventosLeads) {
+      await prisma.lead.create({
+        data: {
+          name: lead.name,
+          email: lead.email || null,
+          phone: lead.phone || null,
+          channelOrigin: lead.channel,
+          funnelId: funnelEventos.id,
+          currentStageId: `stage-eventos-${lead.stage}`,
+          registeredById: adminUser.id,
+          lifeMoment: lead.lifeMoment || null,
+        },
+      });
+    }
+
     // Create lead events (stage transitions) for leads that advanced past stage 2
     const advancedLeads = await prisma.lead.findMany({
       where: { currentStage: { position: { gte: 3 } }, isDeleted: false },
+      include: { funnel: true, currentStage: true },
     });
 
     for (const lead of advancedLeads) {
-      const stagePos = stages.findIndex(s => `stage-${s.position}` === lead.currentStageId);
-      if (stagePos <= 0) continue;
+      const currentPos = lead.currentStage.position;
+      if (currentPos <= 1) continue;
 
       // Create transition events from stage 1 up to current stage
-      for (let i = 0; i < stagePos; i++) {
-        const daysAgo = (stagePos - i) * 14 + Math.floor(Math.random() * 7);
+      for (let i = 1; i < currentPos; i++) {
+        const daysAgo = (currentPos - i) * 14 + Math.floor(Math.random() * 7);
         const eventDate = new Date();
         eventDate.setDate(eventDate.getDate() - daysAgo);
 
+        const stagePrefix = lead.funnel.slug;
         await prisma.leadEvent.create({
           data: {
             leadId: lead.id,
-            fromStageId: `stage-${i + 1}`,
-            toStageId: `stage-${i + 2}`,
+            fromStageId: `stage-${stagePrefix}-${i}`,
+            toStageId: `stage-${stagePrefix}-${i + 1}`,
             createdById: i % 2 === 0 ? adminUser.id : editorUser.id,
             createdAt: eventDate,
-            notes: i === stagePos - 1 ? 'Avançou após acompanhamento do SIPE' : null,
+            notes: i === currentPos - 1 ? 'Avançou após acompanhamento do SIPE' : null,
           },
         });
       }
     }
 
-    console.log(`✓ ${leadNames.length} leads + events created`);
+    const totalLeads = webinarLeads.length + indicacaoLeads.length + eventosLeads.length;
+    console.log(`✓ ${totalLeads} leads + events created (webinar: ${webinarLeads.length}, indicação: ${indicacaoLeads.length}, eventos: ${eventosLeads.length})`);
   }
 
   // ============================

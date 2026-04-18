@@ -84,18 +84,89 @@ export async function POST(request: Request) {
       );
     }
 
-    const webinar = await prisma.webinar.create({
-      data: {
-        title: data.title,
-        slug: data.slug,
-        description: data.description || null,
-        scheduledAt: new Date(data.scheduledAt),
-        replayUrl: data.replayUrl || null,
-        status: data.status || 'SCHEDULED',
-      },
+    // Check if form slug already exists
+    const formSlug = `webinar-${data.slug}`;
+    const existingForm = await prisma.formTemplate.findUnique({
+      where: { slug: formSlug },
     });
 
-    return NextResponse.json({ data: webinar }, { status: 201 });
+    if (existingForm) {
+      return NextResponse.json(
+        { error: { code: 'CONFLICT', message: 'Já existe um formulário com este slug' } },
+        { status: 409 }
+      );
+    }
+
+    // Create webinar with associated FormTemplate in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create FormTemplate for webinar registration
+      const formTemplate = await tx.formTemplate.create({
+        data: {
+          name: `Registro - ${data.title}`,
+          slug: formSlug,
+          title: `Inscrição: ${data.title}`,
+          description: data.description || null,
+          status: 'PUBLISHED',
+          sendNotification: true,
+          submitButtonText: 'Inscrever-se',
+          successMessage: 'Sua inscrição foi confirmada! Você receberá um email com mais informações.',
+          createdById: session.user.id,
+          fields: {
+            create: [
+              {
+                fieldType: 'TEXT',
+                name: 'name',
+                label: 'Nome completo',
+                placeholder: 'Digite seu nome',
+                required: true,
+                position: 0,
+                leadFieldMapping: 'name',
+              },
+              {
+                fieldType: 'EMAIL',
+                name: 'email',
+                label: 'Email',
+                placeholder: 'seu@email.com',
+                required: true,
+                position: 1,
+                leadFieldMapping: 'email',
+              },
+              {
+                fieldType: 'PHONE',
+                name: 'phone',
+                label: 'Telefone (WhatsApp)',
+                placeholder: '(48) 99999-9999',
+                required: false,
+                position: 2,
+                leadFieldMapping: 'phone',
+              },
+            ],
+          },
+        },
+      });
+
+      // Create Webinar with link to FormTemplate
+      const webinar = await tx.webinar.create({
+        data: {
+          title: data.title,
+          slug: data.slug,
+          description: data.description || null,
+          scheduledAt: new Date(data.scheduledAt),
+          replayUrl: data.replayUrl || null,
+          status: data.status || 'SCHEDULED',
+          formTemplateId: formTemplate.id,
+        },
+        include: {
+          formTemplate: {
+            select: { id: true, slug: true, status: true },
+          },
+        },
+      });
+
+      return webinar;
+    });
+
+    return NextResponse.json({ data: result }, { status: 201 });
   } catch (error) {
     return handleApiError(error);
   }
