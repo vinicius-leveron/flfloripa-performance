@@ -2,6 +2,20 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import {
+  DndContext,
+  DragOverlay,
+  closestCorners,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragEndEvent,
+  useDroppable,
+} from '@dnd-kit/core';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -13,6 +27,7 @@ import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { LeadModal } from '@/shared/components/lead-modal';
 import { Plus, Search, Trash2, ArrowRight, ChevronDown, ChevronUp, Clock, User, Mail, Phone, Video, LayoutGrid, List } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface LeadEvent {
   id: string;
@@ -93,6 +108,151 @@ function LeadAvatar({ name }: { name: string }) {
   );
 }
 
+// Droppable Stage Column
+function DroppableStage({
+  stageId,
+  stageName,
+  count,
+  children,
+  isOver,
+}: {
+  stageId: string;
+  stageName: string;
+  count: number;
+  children: React.ReactNode;
+  isOver: boolean;
+}) {
+  const { setNodeRef } = useDroppable({ id: stageId });
+
+  return (
+    <div ref={setNodeRef} className="flex-shrink-0 w-64">
+      <div className={`mb-2 flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${
+        isOver ? 'bg-[#E8792A]' : 'bg-[#1B2A4A]'
+      }`}>
+        <span className="text-sm font-medium text-white">{stageName}</span>
+        <Badge className="bg-white/20 text-white border-transparent text-[10px]">{count}</Badge>
+      </div>
+      <ScrollArea className="h-[500px]">
+        <div className={`space-y-2 pr-2 min-h-[100px] rounded-lg transition-colors ${
+          isOver ? 'bg-orange-50' : ''
+        }`}>
+          {children}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
+
+// Draggable Lead Card
+function DraggableLeadCard({
+  lead,
+  nextStage,
+  onMoveNext,
+  onClick,
+  lifeMomentLabels,
+}: {
+  lead: Lead;
+  nextStage: FunnelStage | null;
+  onMoveNext: () => void;
+  onClick: () => void;
+  lifeMomentLabels: Record<string, string>;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: lead.id,
+    data: { lead },
+  });
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`transition-all ${isDragging ? 'opacity-50 z-50' : ''}`}
+      {...attributes}
+      {...listeners}
+    >
+      <Card className={`cursor-grab active:cursor-grabbing ${
+        isDragging ? 'shadow-lg ring-2 ring-[#E8792A]' : 'hover:shadow-md'
+      }`}>
+        <CardContent className="p-3">
+          <div
+            className="flex items-center gap-2 mb-1"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick();
+            }}
+          >
+            <LeadAvatar name={lead.name} />
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate hover:text-[#E8792A] transition-colors cursor-pointer">
+                {lead.name}
+              </p>
+              {lead.channelOrigin && (
+                <p className="text-[10px] text-gray-400">via {lead.channelOrigin}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {lead.lifeMoment && (
+              <Badge variant="info" className="text-[8px] px-1 py-0">
+                {lifeMomentLabels[lead.lifeMoment] || lead.lifeMoment}
+              </Badge>
+            )}
+            {lead.vslWatched && (
+              <Badge variant="warning" className="text-[8px] px-1 py-0">VSL</Badge>
+            )}
+          </div>
+          {nextStage && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-2 w-full text-xs h-7"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveNext();
+              }}
+            >
+              <ArrowRight size={12} className="mr-1" /> {nextStage.name}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Drag Overlay Card (shown while dragging)
+function DragOverlayCard({ lead, lifeMomentLabels }: { lead: Lead; lifeMomentLabels: Record<string, string> }) {
+  return (
+    <Card className="w-64 shadow-2xl ring-2 ring-[#E8792A] bg-white">
+      <CardContent className="p-3">
+        <div className="flex items-center gap-2 mb-1">
+          <LeadAvatar name={lead.name} />
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate">{lead.name}</p>
+            {lead.channelOrigin && (
+              <p className="text-[10px] text-gray-400">via {lead.channelOrigin}</p>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1 mt-1">
+          {lead.lifeMoment && (
+            <Badge variant="info" className="text-[8px] px-1 py-0">
+              {lifeMomentLabels[lead.lifeMoment] || lead.lifeMoment}
+            </Badge>
+          )}
+          {lead.vslWatched && (
+            <Badge variant="warning" className="text-[8px] px-1 py-0">VSL</Badge>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function LeadsClient() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -102,6 +262,8 @@ export function LeadsClient() {
   const [expandedLead, setExpandedLead] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [overStageId, setOverStageId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -182,19 +344,69 @@ export function LeadsClient() {
 
   const moveMutation = useMutation({
     mutationFn: async ({ id, toStageId }: { id: string; toStageId: string }) => {
-      await fetch(`/api/leads/${id}/move`, {
+      const res = await fetch(`/api/leads/${id}/move`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ toStageId }),
       });
+      if (!res.ok) throw new Error('Erro ao mover lead');
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['funnel-stages'] });
+      toast.success('Lead movido com sucesso');
+    },
+    onError: () => {
+      toast.error('Erro ao mover lead');
     },
   });
 
+  // DnD Sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor)
+  );
+
+  // DnD Handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(event.active.id as string);
+  };
+
+  const handleDragOver = (event: DragEndEvent) => {
+    const { over } = event;
+    setOverStageId(over?.id as string || null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveDragId(null);
+    setOverStageId(null);
+
+    if (!over) return;
+
+    const leadId = active.id as string;
+    const toStageId = over.id as string;
+
+    // Find the lead being dragged
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    // Don't move if dropped on same stage
+    if (lead.currentStage.id === toStageId) return;
+
+    // Check if dropped on a valid stage
+    const targetStage = stages.find(s => s.id === toStageId);
+    if (!targetStage) return;
+
+    // Move the lead
+    moveMutation.mutate({ id: leadId, toStageId });
+  };
+
   const leads = data?.data || [];
+  const activeLead = activeDragId ? leads.find(l => l.id === activeDragId) : null;
   const stageOptions = [
     { label: 'Todos os estágios', value: '' },
     ...stages.map(s => ({ label: s.name, value: s.id })),
@@ -358,64 +570,56 @@ export function LeadsClient() {
                 <CardContent className="py-12 text-center">
                   <User className="mx-auto mb-4 h-12 w-12 text-gray-300" />
                   <p className="text-gray-500">Nenhum lead para exibir no pipeline</p>
+                  <p className="text-xs text-gray-400 mt-1">Arraste os cards entre estágios para movê-los</p>
                 </CardContent>
               </Card>
             ) : (
-              <div className="flex gap-3 overflow-x-auto pb-4">
-                {stages.map((stage) => {
-                  const stageLeads = leads.filter(l => l.currentStage.id === stage.id);
-                  const nextStageObj = stages.find(s => s.position === stage.position + 1);
-                  return (
-                    <div key={stage.id} className="flex-shrink-0 w-64">
-                      <div className="mb-2 flex items-center justify-between rounded-lg bg-[#1B2A4A] px-3 py-2">
-                        <span className="text-sm font-medium text-white">{stage.name}</span>
-                        <Badge className="bg-white/20 text-white border-transparent text-[10px]">{stageLeads.length}</Badge>
-                      </div>
-                      <ScrollArea className="h-[500px]">
-                        <div className="space-y-2 pr-2">
-                          {stageLeads.map((lead) => (
-                            <Card key={lead.id} className="transition-shadow hover:shadow-md cursor-pointer" onClick={() => { setSelectedLeadId(lead.id); setModalOpen(true); }}>
-                              <CardContent className="p-3">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <LeadAvatar name={lead.name} />
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-medium truncate hover:text-[#E8792A] transition-colors">{lead.name}</p>
-                                    {lead.channelOrigin && (
-                                      <p className="text-[10px] text-gray-400">via {lead.channelOrigin}</p>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {lead.lifeMoment && (
-                                    <Badge variant="info" className="text-[8px] px-1 py-0">{lifeMomentLabels[lead.lifeMoment] || lead.lifeMoment}</Badge>
-                                  )}
-                                  {lead.vslWatched && (
-                                    <Badge variant="warning" className="text-[8px] px-1 py-0">VSL</Badge>
-                                  )}
-                                </div>
-                                {nextStageObj && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="mt-2 w-full text-xs h-7"
-                                    onClick={() => moveMutation.mutate({ id: lead.id, toStageId: nextStageObj.id })}
-                                    disabled={moveMutation.isPending}
-                                  >
-                                    <ArrowRight size={12} className="mr-1" /> {nextStageObj.name}
-                                  </Button>
-                                )}
-                              </CardContent>
-                            </Card>
-                          ))}
-                          {stageLeads.length === 0 && (
-                            <p className="py-8 text-center text-xs text-gray-400">Vazio</p>
-                          )}
-                        </div>
-                      </ScrollArea>
-                    </div>
-                  );
-                })}
-              </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCorners}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragEnd={handleDragEnd}
+              >
+                <div className="flex gap-3 overflow-x-auto pb-4">
+                  {stages.map((stage) => {
+                    const stageLeads = leads.filter(l => l.currentStage.id === stage.id);
+                    const nextStageObj = stages.find(s => s.position === stage.position + 1);
+                    return (
+                      <DroppableStage
+                        key={stage.id}
+                        stageId={stage.id}
+                        stageName={stage.name}
+                        count={stageLeads.length}
+                        isOver={overStageId === stage.id}
+                      >
+                        {stageLeads.map((lead) => (
+                          <DraggableLeadCard
+                            key={lead.id}
+                            lead={lead}
+                            nextStage={nextStageObj || null}
+                            onMoveNext={() => nextStageObj && moveMutation.mutate({ id: lead.id, toStageId: nextStageObj.id })}
+                            onClick={() => {
+                              setSelectedLeadId(lead.id);
+                              setModalOpen(true);
+                            }}
+                            lifeMomentLabels={lifeMomentLabels}
+                          />
+                        ))}
+                        {stageLeads.length === 0 && (
+                          <p className="py-8 text-center text-xs text-gray-400">Arraste leads aqui</p>
+                        )}
+                      </DroppableStage>
+                    );
+                  })}
+                </div>
+
+                <DragOverlay>
+                  {activeLead && (
+                    <DragOverlayCard lead={activeLead} lifeMomentLabels={lifeMomentLabels} />
+                  )}
+                </DragOverlay>
+              </DndContext>
             )}
           </TabsContent>
 

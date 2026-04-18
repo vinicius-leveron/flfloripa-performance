@@ -403,12 +403,163 @@ function FieldEditor({
   );
 }
 
+// Embed Code Modal
+function EmbedCodeModal({
+  formId,
+  formSlug,
+  formTitle,
+  onClose,
+}: {
+  formId: string;
+  formSlug: string;
+  formTitle: string;
+  onClose: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<'iframe' | 'script'>('iframe');
+  const [copied, setCopied] = useState(false);
+
+  const { data, isLoading } = useQuery<{
+    data: {
+      embedUrl: string;
+      publicUrl: string;
+      iframeCode: string;
+      scriptCode: string;
+    };
+  }>({
+    queryKey: ['embed-code', formId],
+    queryFn: () => fetch(`/api/forms/${formId}/embed-code`).then((r) => r.json()),
+  });
+
+  const embedData = data?.data;
+
+  const handleCopy = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    toast.success('Código copiado!');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold">Código de Embed</h3>
+            <p className="text-sm text-gray-500">
+              Copie o código abaixo para embedar o formulário em seu site
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X size={18} />
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <div className="py-8 text-center">
+            <Skeleton className="h-40 w-full" />
+          </div>
+        ) : embedData ? (
+          <>
+            {/* Tabs */}
+            <div className="flex border-b mb-4">
+              <button
+                onClick={() => setActiveTab('iframe')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'iframe'
+                    ? 'border-[#E8792A] text-[#E8792A]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Iframe (Simples)
+              </button>
+              <button
+                onClick={() => setActiveTab('script')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'script'
+                    ? 'border-[#E8792A] text-[#E8792A]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Script (Avançado)
+              </button>
+            </div>
+
+            {/* Code Display */}
+            <div className="space-y-4">
+              <div className="relative">
+                <pre className="rounded-lg bg-gray-900 p-4 text-sm text-gray-100 overflow-x-auto max-h-48">
+                  <code>{activeTab === 'iframe' ? embedData.iframeCode : embedData.scriptCode}</code>
+                </pre>
+                <Button
+                  size="sm"
+                  className="absolute top-2 right-2"
+                  onClick={() =>
+                    handleCopy(activeTab === 'iframe' ? embedData.iframeCode : embedData.scriptCode)
+                  }
+                >
+                  {copied ? (
+                    <>
+                      <CheckSquare size={14} className="mr-1" />
+                      Copiado!
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} className="mr-1" />
+                      Copiar
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Info */}
+              <div className="rounded-lg bg-blue-50 p-3 text-sm">
+                {activeTab === 'iframe' ? (
+                  <p className="text-blue-700">
+                    <strong>Iframe:</strong> Método mais simples. Cole este código diretamente no HTML
+                    da sua página. O formulário será exibido dentro de um iframe.
+                  </p>
+                ) : (
+                  <p className="text-blue-700">
+                    <strong>Script:</strong> Método avançado. Permite receber eventos quando o
+                    formulário é submetido (útil para tracking de conversões).
+                  </p>
+                )}
+              </div>
+
+              {/* URLs */}
+              <div className="grid gap-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">URL do Embed:</span>
+                  <code className="rounded bg-gray-100 px-2 py-0.5 text-xs">{embedData.embedUrl}</code>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">URL Pública:</span>
+                  <code className="rounded bg-gray-100 px-2 py-0.5 text-xs">{embedData.publicUrl}</code>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="py-8 text-center text-gray-500">Erro ao carregar código de embed</div>
+        )}
+
+        <div className="flex justify-end mt-6 pt-4 border-t">
+          <Button variant="outline" onClick={onClose}>
+            Fechar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Main Component
 export function FormBuilderClient({ formId }: { formId: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [editingField, setEditingField] = useState<FormField | null>(null);
   const [isAddingField, setIsAddingField] = useState(false);
+  const [showEmbedModal, setShowEmbedModal] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -615,6 +766,14 @@ export function FormBuilderClient({ formId }: { formId: string }) {
                 <Copy size={14} className="mr-1.5" />
                 Copiar Link
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowEmbedModal(true)}
+              >
+                <Code size={14} className="mr-1.5" />
+                Código de Embed
+              </Button>
             </>
           )}
           {form.status === 'DRAFT' && (
@@ -772,6 +931,15 @@ export function FormBuilderClient({ formId }: { formId: string }) {
             updateFieldMutation.mutate({ fieldId: editingField.id, data: fieldData })
           }
           onClose={() => setEditingField(null)}
+        />
+      )}
+
+      {showEmbedModal && (
+        <EmbedCodeModal
+          formId={form.id}
+          formSlug={form.slug}
+          formTitle={form.title}
+          onClose={() => setShowEmbedModal(false)}
         />
       )}
     </div>
